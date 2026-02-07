@@ -1,0 +1,22 @@
+# Tasks
+
+- [x] Project Setup
+    - [x] Initialize Vite + React (JavaScript)
+    - [x] Configure Tailwind CSS
+    - [x] Setup project structure (components, hooks, contexts, utils)
+- [x] Core Components Implementation
+    - [x] Create Mock Data Generator
+    - [x] Implement `GraphVisualization` component using `react-force-graph-2d`
+    - [x] Implement Side Panel (Node Inspector)
+    - [x] Implement Smart Search Bar
+- [ ] Visual Polish & Interaction
+    - [x] Integrate components in App.jsx
+    - [x] Integrate components in App.jsx
+    - [x] Implement Camera Re-centering and Zoom interactions
+    - [x] Add "Fuzzy Connection" styling (dotted lines, glow)
+    - [x] Implement data verification (Schema validation without TS)
+    - [x] Simulate "Goal Search" flow with mock backend response
+- [x] Onboarding & Data
+    - [x] Implement "LinkedIn Connections Upload" (JSON/CSV parser)
+    - [x] create McGill Email validation/Auth mock
+    - [x] Create Profile Editor (Major, Minor, Experience form)
