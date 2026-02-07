@@ -1,0 +1,80 @@
+import React from 'react';
+import { X, UserPlus, Briefcase, GraduationCap } from 'lucide-react';
+
+/**
+ * @param {Object} props
+ * @param {import('../../utils/schema').Node | null} props.node
+ * @param {() => void} props.onClose
+ */
+export default function Sidebar({ node, onClose }) {
+    if (!node) return null;
+
+    return (
+        <div className="absolute top-0 right-0 h-full w-80 bg-slate-800/95 backdrop-blur shadow-xl border-l border-slate-700 p-6 flex flex-col text-slate-100 transition-transform transform translate-x-0">
+            {/* Header */}
+            <div className="flex justify-between items-start mb-6">
+                <div>
+                    <h2 className="text-2xl font-bold text-white">{node.name}</h2>
+                    <p className="text-slate-400 text-sm">{node.info.major}</p>
+                </div>
+                <button onClick={onClose} className="p-1 hover:bg-slate-700 rounded transition">
+                    <X size={20} />
+                </button>
+            </div>
+
+            {/* Match Score */}
+            <div className="mb-6">
+                <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm font-medium text-slate-300">Goal Match</span>
+                    <span className="text-sm font-bold text-blue-400">{(node.score * 100).toFixed(0)}%</span>
+                </div>
+                <div className="w-full bg-slate-700 rounded-full h-2">
+                    <div
+                        className="bg-blue-500 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${node.score * 100}%` }}
+                    />
+                </div>
+            </div>
+
+            {/* AI Summary */}
+            <div className="bg-slate-700/50 p-4 rounded-lg mb-6 border border-slate-600">
+                <h3 className="text-xs font-semibold text-blue-300 uppercase tracking-wider mb-2">Why this match?</h3>
+                <p className="text-sm text-slate-300 leading-relaxed">
+                    {node.summary || "This student shares valid paths to your goal based on their academic history."}
+                </p>
+            </div>
+
+            {/* Details */}
+            <div className="space-y-4 flex-1 overflow-y-auto">
+                <div>
+                    <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-200 mb-2">
+                        <Briefcase size={16} className="text-slate-400" /> Experience
+                    </h3>
+                    <ul className="space-y-2">
+                        {node.info.experience.map((exp, i) => (
+                            <li key={i} className="text-sm text-slate-300 bg-slate-800 p-2 rounded border border-slate-700/50">
+                                {exp}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-200 mb-2">
+                        <GraduationCap size={16} className="text-slate-400" /> Education
+                    </h3>
+                    <p className="text-sm text-slate-300">McGill University</p>
+                    <p className="text-xs text-slate-400">Class of 2026</p>
+                </div>
+            </div>
+
+            {/* Action */}
+            <div className="mt-6 pt-6 border-t border-slate-700">
+                <button className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-2 px-4 rounded-lg font-medium transition shadow-lg shadow-blue-900/20">
+                    <UserPlus size={18} />
+                    Add Connection
+                </button>
+            </div>
+        </div>
+    );
+}
