@@ -20,3 +20,27 @@
     - [x] Implement "LinkedIn Connections Upload" (JSON/CSV parser)
     - [x] create McGill Email validation/Auth mock
     - [x] Create Profile Editor (Major, Minor, Experience form)
+
+## Known Issues & Future Features
+- [ ] **UI/UX: Move 2D/3D Toggle**
+  - **Issue**: Current position (Top-Right) conflicts or is not preferred.
+  - **Fix**: Move to Top-Left in `App.jsx`.
+- [ ] **Bug: Sidebar Cannot Close**
+  - **Issue**: The close button in the sidebar appears non-functional.
+  - **Context**: `App.jsx` handles the close state. Possible Z-index issue overlapping with the View Toggle or Graph Canvas.
+  - **Fix**: Check `z-index` in `Sidebar.jsx` (ensure > 20). Verify `onClose` propagation.
+- [ ] **UX: Smooth 2D/3D Transition**
+  - **Issue**: Switching views resets the graph layout and camera, causing disorientation.
+  - **Fix**: 
+    - Maintain node positions (`fx`, `fy`, `z`) across re-renders.
+    - Animate camera to a neutral position before switching.
+- [ ] **Bug: Search Destroys Graph Layout**
+  - **Issue**: Filtering nodes causes them to reset positions and lose structure ("equally spaced").
+  - **Cause**: `simulateSearch` in `mockData.js` returns new object references. `react-force-graph` treats them as new nodes and resets the physics simulation.
+  - **Fix**: Modify `simulateSearch` to update existing node objects or copy `x,y,z` coordinates to preserve the force layout.
+- [ ] **Feature: Full Graph Highlighting**
+  - **Issue**: Only nodes are highlighted on selection/hover.
+  - **Fix**: Update `GraphViz.jsx` `linkColor` and `linkWidth` props to highlight edges connecting to the active node.
+- [ ] **Data: Mock Name Generator**
+  - **Issue**: Users are named "Student 1", "Student 2".
+  - **Fix**: Add a simple name generator (array of names) in `mockData.js`.
