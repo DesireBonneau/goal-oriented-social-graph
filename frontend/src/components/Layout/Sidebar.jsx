@@ -10,7 +10,7 @@ export default function Sidebar({ node, onClose }) {
     if (!node) return null;
 
     return (
-        <div className="absolute top-0 right-0 h-full w-80 bg-slate-800/95 backdrop-blur shadow-xl border-l border-slate-700 p-6 flex flex-col text-slate-100 transition-transform transform translate-x-0">
+        <div className="absolute top-0 right-0 h-full w-80 z-30 bg-slate-800/95 backdrop-blur shadow-xl border-l border-slate-700 p-6 flex flex-col text-slate-100 transition-transform transform translate-x-0">
             {/* Header */}
             <div className="flex justify-between items-start mb-6">
                 <div>

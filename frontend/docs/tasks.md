@@ -22,13 +22,12 @@
     - [x] Create Profile Editor (Major, Minor, Experience form)
 
 ## Known Issues & Future Features
-- [ ] **UI/UX: Move 2D/3D Toggle**
-  - **Issue**: Current position (Top-Right) conflicts or is not preferred.
-  - **Fix**: Move to Top-Left in `App.jsx`.
-- [ ] **Bug: Sidebar Cannot Close**
-  - **Issue**: The close button in the sidebar appears non-functional.
-  - **Context**: `App.jsx` handles the close state. Possible Z-index issue overlapping with the View Toggle or Graph Canvas.
-  - **Fix**: Check `z-index` in `Sidebar.jsx` (ensure > 20). Verify `onClose` propagation.
+- [x] **UI/UX: Move 2D/3D Toggle**
+  - ~~**Issue**: Current position (Top-Right) conflicts or is not preferred.~~
+  - **Fixed**: Moved to Top-Left in `App.jsx` (changed `right-4` → `left-4`).
+- [x] **Bug: Sidebar Cannot Close**
+  - ~~**Issue**: The close button in the sidebar appears non-functional.~~
+  - **Fixed**: Added `z-30` class to sidebar container in `Sidebar.jsx` to ensure it renders above graph canvas.
 - [ ] **UX: Smooth 2D/3D Transition**
   - **Issue**: Switching views resets the graph layout and camera, causing disorientation.
   - **Fix**: 
@@ -41,6 +40,6 @@
 - [ ] **Feature: Full Graph Highlighting**
   - **Issue**: Only nodes are highlighted on selection/hover.
   - **Fix**: Update `GraphViz.jsx` `linkColor` and `linkWidth` props to highlight edges connecting to the active node.
-- [ ] **Data: Mock Name Generator**
-  - **Issue**: Users are named "Student 1", "Student 2".
-  - **Fix**: Add a simple name generator (array of names) in `mockData.js`.
+- [x] **Data: Mock Name Generator**
+  - ~~**Issue**: Users are named "Student 1", "Student 2".~~
+  - **Fixed**: Added `FIRST_NAMES`, `LAST_NAMES` arrays and `generateName()` function in `mockData.js`.

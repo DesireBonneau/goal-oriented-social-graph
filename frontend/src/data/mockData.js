@@ -1,5 +1,19 @@
 // Faker removed in favor of simple arrays
 
+const FIRST_NAMES = [
+    "Sarah", "Marcus", "Aisha", "David", "Priya", "James", "Mei", "Carlos",
+    "Emma", "Jamal", "Sofia", "Ryan", "Fatima", "Kevin", "Olivia", "Andre",
+    "Yuki", "Daniel", "Zara", "Michael", "Chloe", "Hassan", "Isabella", "Tyler",
+    "Ananya", "Brandon", "Maya", "Ethan", "Layla", "Jason", "Nina", "Derek"
+];
+
+const LAST_NAMES = [
+    "Chen", "Johnson", "Patel", "Williams", "Kim", "Rodriguez", "Singh", "Brown",
+    "Nguyen", "Martinez", "Lee", "Thompson", "Garcia", "Wilson", "Ahmed", "Taylor",
+    "Wang", "Anderson", "Sharma", "Moore", "Park", "Jackson", "Okonkwo", "White",
+    "Tanaka", "Harris", "Gupta", "Martin", "Liu", "Robinson", "Khan", "Clark"
+];
+
 const MAJORS = [
     "Computer Science", "Software Engineering", "Electrical Engineering",
     "Psychology", "Economics", "Mathematics", "Physics", "Cognitive Science"
@@ -7,8 +21,15 @@ const MAJORS = [
 
 const COMPANIES = [
     "Tesla", "Google", "Microsoft", "Amazon", "Shopify",
-    "Morgan Stanley", "Ubisoft", "Mnist", "CGI"
+    "Morgan Stanley", "Ubisoft", "Mila", "CGI"
 ];
+
+/** Generates a random full name */
+function generateName() {
+    const first = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
+    const last = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+    return `${first} ${last}`;
+}
 
 /**
  * Generates a random graph with nodes and links
@@ -24,7 +45,7 @@ export function generateMockGraph(N = 30) {
         const isMainUser = i === 0;
         nodes.push({
             id: `user_${i}`,
-            name: isMainUser ? "You" : `Student ${i}`, // Placeholder names for now unless I add a name generator
+            name: isMainUser ? "You" : generateName(),
             info: {
                 major: MAJORS[Math.floor(Math.random() * MAJORS.length)],
                 experience: [
