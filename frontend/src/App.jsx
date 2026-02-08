@@ -5,7 +5,7 @@ import SearchBar from './components/UI/SearchBar';
 import AuthGate from './components/Onboarding/AuthGate';
 import ProfileEditor from './components/Onboarding/ProfileEditor';
 import LinkedInImport from './components/Onboarding/LinkedInImport';
-import { generateMockGraph, simulateSearch } from './data/mockData';
+import { api } from './services/api';
 
 function App() {
   // State
@@ -21,58 +21,78 @@ function App() {
     setOnboardingStep('profile');
   };
 
-  const handleSaveProfile = (profileData) => {
-    setUser(prev => ({ ...prev, ...profileData }));
+  const handleSaveProfile = async (profileData) => {
+    const updatedUser = { ...user, ...profileData };
+    setUser(updatedUser);
+
+    // Create/Update user in backend
+    try {
+      // We'll try to create, if it exists, maybe we update? 
+      // For now let's just create and ignore "exists" error or handle it gracefully
+      await api.createUser(updatedUser);
+    } catch (err) {
+      console.warn("Failed to sync user to backend", err);
+    }
+
     setOnboardingStep('import');
   };
 
-  const handleImport = (importedConnections) => {
-    // Generate base graph
-    const mockGraph = generateMockGraph(30);
+  const handleImport = async (importedConnections) => {
+    // Determine if we need to send these connections to backend?
+    // For now, let's just get the fresh graph from backend
+    try {
+      const data = await api.getGraph();
 
-    // Update "Me" node (user_0) with real profile
-    const meNode = mockGraph.nodes.find(n => n.id === 'user_0');
-    if (meNode && user) {
-      meNode.name = user.name;
-      meNode.info = {
-        major: user.major,
-        experience: user.experience || []
-      };
-    }
+      // Update "Me" node (user_0) with real profile (client side override for now)
+      // In a real app, the backend would return the graph *contextualized* to the user
+      const meNode = data.nodes.find(n => n.id === 'user_0');
+      if (meNode && user) {
+        meNode.name = user.name;
+        meNode.info = {
+          major: user.major,
+          experience: user.experience || []
+        };
+      }
 
-    // Append imported connections
-    // For now, we just add them as unconnected nodes or connect them to "Me"
-    const newNodes = [...mockGraph.nodes];
-    const newLinks = [...mockGraph.links];
+      // Append imported connections (same logic as before, just appending to backend data)
+      const newNodes = [...data.nodes];
+      const newLinks = [...data.links];
 
-    importedConnections.forEach((conn, i) => {
-      // Avoid duplicate IDs if logic matches
-      newNodes.push(conn);
-      newLinks.push({
-        source: 'user_0',
-        target: conn.id,
-        strength: 0.8,
-        type: 'direct'
+      importedConnections.forEach((conn, i) => {
+        newNodes.push(conn);
+        newLinks.push({
+          source: 'user_0',
+          target: conn.id,
+          strength: 0.8,
+          type: 'direct'
+        });
       });
-    });
 
-    setGraphData({ nodes: newNodes, links: newLinks });
-    setOnboardingStep('graph');
+      setGraphData({ nodes: newNodes, links: newLinks });
+      setOnboardingStep('graph');
+
+    } catch (err) {
+      console.error("Failed to load graph", err);
+    }
   };
 
-  const handleSkipImport = () => {
-    const mockGraph = generateMockGraph(40);
-    // Update "Me" node (user_0) with real profile
-    const meNode = mockGraph.nodes.find(n => n.id === 'user_0');
-    if (meNode && user) {
-      meNode.name = user.name;
-      meNode.info = {
-        major: user.major,
-        experience: user.experience || []
-      };
+  const handleSkipImport = async () => {
+    try {
+      const data = await api.getGraph();
+
+      const meNode = data.nodes.find(n => n.id === 'user_0');
+      if (meNode && user) {
+        meNode.name = user.name;
+        meNode.info = {
+          major: user.major,
+          experience: user.experience || []
+        };
+      }
+      setGraphData(data);
+      setOnboardingStep('graph');
+    } catch (err) {
+      console.error("Failed to load graph", err);
     }
-    setGraphData(mockGraph);
-    setOnboardingStep('graph');
   };
 
   // Graph Interactions
@@ -80,13 +100,27 @@ function App() {
     setSelectedNode(node);
   }, []);
 
-  const handleSearch = useCallback((query) => {
-    setGraphData(prevData => {
-      // simulateSearch mutates in place, but we need a new reference for React
-      const updated = simulateSearch(prevData, query);
-      return { ...updated }; // Spread to create new reference
-    });
-  }, []);
+  const handleSearch = useCallback(async (query) => {
+    try {
+      const data = await api.search(query);
+      // Restore "Me" node override if needed, or rely on backend
+      // optimizing for speed, we might want to keep the "Me" node state
+      // But for now, let's just use what backend gives + override "Me" name locally if we want
+
+      // Re-apply local user override if it gets lost (since backend sends generic user_0)
+      if (user) {
+        const meNode = data.nodes.find(n => n.id === 'user_0');
+        if (meNode) {
+          meNode.name = user.name;
+          meNode.info = { major: user.major, experience: user.experience || [] };
+        }
+      }
+
+      setGraphData(data);
+    } catch (err) {
+      console.error("Search failed", err);
+    }
+  }, [user]);
 
   const handleToggleConnection = useCallback((nodeId) => {
     setGraphData(prevData => {
