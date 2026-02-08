@@ -8,6 +8,7 @@ import json
 from typing import Tuple
 import random
 import time
+import os
 
 
 # Helper functions to check any failed output from the Gemini API
@@ -32,15 +33,31 @@ class GeminiHTTPError(Exception):
 
 
 _INDUSTRIES_FILE = Path(__file__).with_name("industries.txt")
-_API_KEY_FILE = Path(__file__).with_name("gemini_api_key.txt")
 _GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 
 
 def _read_api_key():
-    # important because api key is in .gitignore
-    if _API_KEY_FILE.exists():
-        return _API_KEY_FILE.read_text(encoding="utf-8").strip()
-    return None
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    _load_env_file(env_path)
+    return os.getenv("GEMINI_API_KEY")
+
+
+def _load_env_file(path: Path) -> None:
+    """
+    Minimal .env loader. Reads key=value lines into os.environ if not already set.
+    """
+    if not path.exists():
+        return
+
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
 
 
 def _normalize_industry(value: str) -> str:
