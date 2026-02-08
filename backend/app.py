@@ -4,7 +4,9 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 from db import get_db, check_connection
 from algorithm import calculate_similarity, generate_mock_graph_data
+from services.cv_service import extract_cv_data
 
+# Load environment variables
 # Load environment variables
 load_dotenv()
 
@@ -39,6 +41,12 @@ def create_user():
     # Basic validation
     if not data or 'email' not in data:
         return jsonify({"error": "Email is required"}), 400
+    
+    # Extended validation could go here, but we trust the schema for now
+    # The frontend is responsible for sending the correct structure
+    # We just ensure email is unique and valid (backend check)
+    if not data['email'].endswith('@mail.mcgill.ca') and not data['email'].endswith('@mcgill.ca'):
+         return jsonify({"error": "Must be a McGill email"}), 400
         
     users = db.users
     existing = users.find_one({"email": data['email']})

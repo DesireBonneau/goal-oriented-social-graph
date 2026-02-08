@@ -46,12 +46,34 @@ export const api = {
      */
     createUser: async (userData) => {
         try {
-            const response = await fetch(`${API_URL}/user`, {
+            const response = await fetch(`${API_URL}/api/user`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(userData)
             });
             if (!response.ok) throw new Error('Failed to create user');
+            return await response.json();
+        } catch (error) {
+            console.error("API Error:", error);
+            throw error;
+        }
+    },
+
+    /**
+     * Extract CV data
+     * @param {File} file 
+     */
+    extractCV: async (file) => {
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch(`${API_URL}/api/cv/extract`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) throw new Error('Failed to extract CV');
             return await response.json();
         } catch (error) {
             console.error("API Error:", error);
@@ -74,3 +96,5 @@ export const api = {
         }
     }
 };
+
+export const extractCV = api.extractCV;

@@ -4,7 +4,8 @@
 - **Framework**: Flask (Python 3.12+).
 - **Database**: MongoDB Atlas (accessed via `pymongo`).
 - **Testing**: `pytest`.
-- **Environment**: `python-dotenv` loads `.env`.
+- **Environment**: `python-dotenv` loads `.env`. Always run in `.venv`.
+- **AI Dependencies**: `google-genai` (SDK for Gemini), `PyPDF2`.
 
 ## Architecture
 - **`app.py`**: Monolithic entry point. Defines all routes (`/api/...`).
@@ -13,6 +14,9 @@
     - `check_connection()`: Used by health checks.
 - **`algorithm.py`**: Contains the logic for the "Goal-Oriented" matching.
     - *Status*: Currently using placeholder/mock logic. Needs to be replaced with real TF-IDF or vector similarity.
+- **`services/cv_service.py`**: Handles CV parsing using Google's Gemini Flash model (`google.genai` SDK).
+    - *Utility*: Extracts structured data (JSON) from PDF resumes.
+
 
 ## Principles & Rules
 1. **Strict Configuration**: The app MUST fail at startup if `MONGO_URI` or `CLIENT_URL` are missing. Do not fallback to defaults that could hide configuration errors.
@@ -27,11 +31,27 @@
 ### `users` Collection
 ```json
 {
-  "name": "String",
-  "email": "String (Unique)",
+  "email": "String (Unique, @mail.mcgill.ca)",
+  "firstName": "String",
+  "lastName": "String",
+  "graduationYear": "Integer",
+  "faculty": "String",
   "major": "String",
-  "goals": ["String"],
-  "experience": ["String"]
+  "minor": "String (Optional)",
+  "clubs": ["String"],
+  "experience": [{
+    "position": "String",
+    "company": "String",
+    "dates": "String",
+    "location": "String"
+  }],
+  "linkedinUrl": "String",
+  "socials": {
+    "github": "String",
+    "pinterest": "String",
+    "other": "String"
+  },
+  "preferredWorkPlace": "String"
 }
 ```
 

@@ -19,17 +19,15 @@
     - [ ] Update `/api/graph` to return *real* nodes from DB instead of random ones.
     - [ ] Implement pagination or "viewport loading" if graph gets too big.
 
-## Phase 3: User Experience & Flows
-*Focus: Making it usable for real students.*
-- [ ] **Authentication**
-    - [ ] Secure `AuthGate`: Implement JWT or OAuth (Google/LinkedIn Login).
-    - [ ] Protect backend routes (require valid session).
-- [ ] **Data Import Strategy**
-    - [ ] Implement CSV Parser in `LinkedInImport.jsx`.
-    - [ ] Add Backend Endpoint `/api/import` to process/sanitize bulk connections.
-- [ ] **Profile Enrichment**
-    - [ ] "Goal" selector (e.g., "Find a Co-founder", "Study Buddy").
-    - [ ] Add these goals to the `algorithm` weighting logic.
+## Phase 3: Smart Search & User Flows
+*Focus: Connecting users based on goals and skills (e.g., Tutoring Matching).*
+- [ ] **Smart Search Engine**
+    - [ ] Implement "Needs vs. Offers" matching logic (User A wants to learn Math -> User B can teach Math).
+    - [ ] Create search API endpoint accepting natural language or tags (e.g., "Math tutor").
+    - [ ] Rank results by compatibility score (Skill Level, intrests generated from the internships and experience we already have in the user profile, etc).
+- [ ] **Search Experience UI**
+    - [ ] Design Result Cards showing *why* a user matched 
+
 
 ## Phase 4: Social Features (The "Graph")
 *Focus: Interaction.*

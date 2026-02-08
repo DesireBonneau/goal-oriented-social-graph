@@ -95,6 +95,9 @@ const isClean = args.includes('--clean');
 
         for (const p of pathsToRemove) {
             await deletePathWithRetry(p);
+            if (fs.existsSync(p)) {
+                error(`Failed to remove ${p}. Please manually delete it or close any programs using it.`);
+            }
         }
 
         log('Cleanup complete. Proceeding with fresh setup...', 'green');
@@ -258,7 +261,8 @@ const isClean = args.includes('--clean');
 
     // Install Requirements
     // Install Requirements
-    log('Installing backend requirements...', 'yellow');
+    // Install Requirements
+    log(`Installing backend requirements using: ${venvPython}`, 'yellow');
     runQuietly(`"${venvPython}" -m pip install -r requirements.txt`, 'Installing Python dependencies');
 
     // .env creation
@@ -301,10 +305,19 @@ const isClean = args.includes('--clean');
 
     log('Starting Both Services...', 'magenta');
 
-    const backend = spawn(venvPython, ['app.py'], {
+    // Prepare backend environment (simulate activation)
+    const backendEnv = { ...process.env, PYTHONUNBUFFERED: '1', VIRTUAL_ENV: venvPath };
+    // Prepend venv scripts to PATH
+    const venvScripts = isWin ? path.dirname(venvPython) : path.join(venvPath, 'bin');
+    backendEnv.PATH = venvScripts + path.delimiter + (backendEnv.PATH || '');
+
+    // Execute with quoted path to handle spaces if shell: true
+    const backendCommand = `"${venvPython}"`;
+
+    const backend = spawn(backendCommand, ['app.py'], {
         cwd: backendDir,
-        shell: true, // Needed for venv activation context sometimes, but using absolute path to python handles it mostly. kept true for env vars.
-        env: { ...process.env, PYTHONUNBUFFERED: '1' }
+        shell: true,
+        env: backendEnv
     });
 
     // --- Success Banner ---
