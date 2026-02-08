@@ -1,10 +1,29 @@
 import random
 import math
+import json
+import os
 
-# Constants ported from frontend config
-MAJORS = [
+# Load academic options from shared JSON files
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
+
+def load_json_list(filename, key):
+    """Load a list from a JSON file, with fallback to empty list."""
+    try:
+        filepath = os.path.join(DATA_DIR, filename)
+        with open(filepath, 'r') as f:
+            data = json.load(f)
+            return data.get(key, [])
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+MAJORS = load_json_list('majors.json', 'majors') or [
     "Computer Science", "Software Engineering", "Electrical Engineering",
     "Psychology", "Economics", "Mathematics", "Physics", "Cognitive Science"
+]
+
+FACULTIES = load_json_list('faculties.json', 'faculties') or [
+    "Faculty of Science", "Faculty of Engineering", "Faculty of Arts",
+    "Desautels Faculty of Management"
 ]
 
 COMPANIES = [
@@ -184,9 +203,10 @@ def generate_mock_graph_data(N=40):
 
     return {"nodes": nodes, "links": links}
 
-def calculate_similarity(query, graph):
+def calculate_similarity(query, graph, current_user_id=None):
     """
     Placeholder similarity algorithm.
+    current_user_id: Optional user ID to exclude from scoring (their own node)
     """
     lower_query = query.lower().strip()
     
@@ -197,7 +217,12 @@ def calculate_similarity(query, graph):
     }
     
     for node in graph['nodes']:
-        if node['id'] == 'user_0':
+        # Skip the current user's node (keep score at 1.0)
+        if current_user_id and node['id'] == current_user_id:
+            node['score'] = 1.0
+            node['val'] = 10
+            continue
+        if node['id'] == 'user_0':  # Legacy mock data fallback
             continue
             
         match_score = 0

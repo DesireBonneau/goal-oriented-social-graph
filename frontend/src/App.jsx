@@ -4,6 +4,7 @@ import Sidebar from './components/Layout/Sidebar';
 import SearchBar from './components/UI/SearchBar';
 import RegistrationFlow from './components/Onboarding/RegistrationFlow';
 import { api } from './services/api';
+import { setCurrentUserId } from './config/graphConfig';
 
 function App() {
   // State
@@ -27,35 +28,35 @@ function App() {
 
       setUser(finalUser);
 
+      // Set current user ID for graph highlighting
+      if (!userData.isGuest && finalUser.id) {
+        setCurrentUserId(finalUser.id);
+      }
+
       // Load initial graph
       const data = await api.getGraph();
 
-      // If NOT a guest, inject/update "Me" node
+      // If NOT a guest, find/update current user's node and center on it
       if (!userData.isGuest) {
-        const meNodeIndex = data.nodes.findIndex(n => n.id === 'user_0' || n.email === userData.email);
+        const meNodeIndex = data.nodes.findIndex(n => n.id === finalUser.id || n.email === userData.email);
 
         if (meNodeIndex !== -1) {
+          // Update our node with latest profile data
           data.nodes[meNodeIndex] = {
             ...data.nodes[meNodeIndex],
             name: `${userData.firstName} ${userData.lastName}`,
             info: {
               major: userData.major,
-              experience: userData.experience
+              experience: userData.experience || []
             }
           };
+          // Center camera on our node
+          setSelectedNode(data.nodes[meNodeIndex]);
         }
       } else {
-        // If Guest, we must remove the "You" / "user_0" node from the data completely
-        // because the backend generates it by default.
-        data.nodes = data.nodes.filter(n => n.id !== 'user_0');
-        data.links = data.links.filter(l => l.source !== 'user_0' && l.target !== 'user_0');
-
-        // Pick a random node to center around so the graph doesn't look empty/far away
+        // Guest mode: pick a random node to center around
         if (data.nodes.length > 0) {
           const randomNode = data.nodes[Math.floor(Math.random() * data.nodes.length)];
-          // We set selectedNode which triggers the sidebar and camera focus
-          // If we just want camera focus without sidebar, we might need a different state, 
-          // but "center around" implies focus. Let's select it for now so they see *something*.
           setSelectedNode(randomNode);
         }
       }
@@ -127,6 +128,7 @@ function App() {
       {selectedNode && (
         <Sidebar
           node={selectedNode}
+          currentUserId={user?.id}
           onClose={() => setSelectedNode(null)}
           onToggleConnection={handleToggleConnection}
         />

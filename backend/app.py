@@ -98,7 +98,23 @@ def create_user():
     data['token'] = token
 
     result = users.insert_one(data)
-    return jsonify({"message": "User created", "id": str(result.inserted_id), "token": token}), 201
+    
+    # Return full user object with 'id' (not '_id') for frontend compatibility
+    user_response = {
+        "id": str(result.inserted_id),
+        "email": data.get('email'),
+        "firstName": data.get('firstName'),
+        "lastName": data.get('lastName'),
+        "major": data.get('major'),
+        "minor": data.get('minor'),
+        "faculty": data.get('faculty'),
+        "graduationYear": data.get('graduationYear'),
+        "clubs": data.get('clubs', []),
+        "experience": data.get('experience', []),
+        "socials": data.get('socials', {}),
+        "token": token
+    }
+    return jsonify({"message": "User created", **user_response}), 201
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -125,12 +141,23 @@ def login():
     token = secrets.token_hex(16)
     users.update_one({"_id": user['_id']}, {"$set": {"token": token}})
     
-    # Remove password from response
-    user['_id'] = str(user['_id'])
-    user.pop('password', None)
-    user['token'] = token
+    # Build response with 'id' (not '_id') for frontend compatibility
+    user_response = {
+        "id": str(user['_id']),
+        "email": user.get('email'),
+        "firstName": user.get('firstName'),
+        "lastName": user.get('lastName'),
+        "major": user.get('major'),
+        "minor": user.get('minor'),
+        "faculty": user.get('faculty'),
+        "graduationYear": user.get('graduationYear'),
+        "clubs": user.get('clubs', []),
+        "experience": user.get('experience', []),
+        "socials": user.get('socials', {}),
+        "token": token
+    }
         
-    return jsonify(user), 200
+    return jsonify(user_response), 200
 
 @app.route('/api/user', methods=['PATCH'])
 @require_auth
@@ -187,17 +214,24 @@ def get_graph():
     users_cursor = db.users.find({})
     nodes = []
     for u in users_cursor:
+        user_id = str(u['_id'])
         # Transform DB user to Node format
+        # Note: isFuzzy, isConnected, summary are computed by frontend based on connections
         nodes.append({
-            "id": str(u['_id']),
+            "id": user_id,
             "email": u.get('email'),
-            "name": f"{u.get('firstName', '')} {u.get('lastName', '')}".strip(),
-            "info": {
-                "major": u.get('major', 'Unknown'),
-                "experience": u.get('experience', [])
-            },
-            "val": 5, # Default size
-            "score": 1.0
+            "name": f"{u.get('firstName', '')} {u.get('lastName', '')}".strip() or "Unknown",
+            "firstName": u.get('firstName'),
+            "lastName": u.get('lastName'),
+            "major": u.get('major'),
+            "minor": u.get('minor'),
+            "faculty": u.get('faculty'),
+            "graduationYear": u.get('graduationYear'),
+            "clubs": u.get('clubs', []),
+            "experience": u.get('experience', []),
+            "socials": u.get('socials', {}),
+            "val": 5,
+            "score": 0.7
         })
 
     # Fetch connections
@@ -217,15 +251,28 @@ def get_graph():
 
 @app.route('/api/search', methods=['POST'])
 def search_graph():
+    db = get_db()
     data = request.json
     query = data.get('query', '')
     
+    # Identify current user for personalized relevance scoring
+    current_user_id = None
+    auth_header = request.headers.get('Authorization')
+    if auth_header:
+        try:
+            token = auth_header.split(" ")[1]
+            current_user = db.users.find_one({"token": token})
+            if current_user:
+                current_user_id = str(current_user['_id'])
+        except:
+            pass  # Unauthenticated search is OK, just not personalized
+    
     # Get current graph state (or re-generate/fetch)
-    # Ideally, we'd pass the current user's context too
+    # TODO: Use real graph data from DB instead of mock
     graph = generate_mock_graph_data()
     
-    # Run algorithm
-    updated_graph = calculate_similarity(query, graph)
+    # Run algorithm with current user context
+    updated_graph = calculate_similarity(query, graph, current_user_id)
     
     return jsonify(updated_graph)
 
