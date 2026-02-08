@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 from db import get_db, check_connection
 from algorithm import calculate_similarity, generate_mock_graph_data
+from graph import compute_user_connections, rebuild_all_connections
 from services.cv_service import extract_cv_data
 from services.search_service import perform_search, get_suggestions
 
@@ -99,10 +100,18 @@ def create_user():
     data['token'] = token
 
     result = users.insert_one(data)
+    user_id = str(result.inserted_id)
+    
+    # Compute connections to other users using smart similarity
+    try:
+        connections = compute_user_connections(db, user_id)
+    except Exception as e:
+        print(f"Warning: Failed to compute connections for new user: {e}")
+        connections = []
     
     # Return full user object with 'id' (not '_id') for frontend compatibility
     user_response = {
-        "id": str(result.inserted_id),
+        "id": user_id,
         "email": data.get('email'),
         "firstName": data.get('firstName'),
         "lastName": data.get('lastName'),
@@ -159,6 +168,16 @@ def login():
     }
         
     return jsonify(user_response), 200
+
+@app.route('/api/graph/rebuild', methods=['POST'])
+def rebuild_graph():
+    """Rebuild all connections using smart similarity algorithm."""
+    db = get_db()
+    try:
+        result = rebuild_all_connections(db)
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/user', methods=['PATCH'])
 @require_auth
