@@ -16,6 +16,13 @@ Use these files as your primary source of truth for specific domains.
 | **Frontend** | [README](./frontend/README.md) | [**LLM_CONTEXT.md**](./frontend/LLM_CONTEXT.md) |
 | **Backend** | [README](./backend/README.md) | [**LLM_CONTEXT.md**](./backend/LLM_CONTEXT.md) |
 | **Roadmap** | [ROADMAP.md](./ROADMAP.md) | -- |
+| **Run Script** | [run.js](./run.js) | Standard startup & maintenance script |
+
+## Development Workflow
+**Use `node run.js` for all startup tasks.**
+- **`node run.js`**: Standard start. Checks env, installs missing deps, starts backend/frontend.
+- **`node run.js --clean`**: Full reset. Deletes `.venv` and `node_modules`, then reinstalls. Use this if you encounter strange dependency issues or "module not found" errors.
+- **Environment**: The script handles `.env` creation (scaffolding) if missing.
 
 ## Directives for AI Agents
 **CRITICAL**: As an AI contributor, you are responsible for maintaining the documentation.
