@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Check if node is available in the current shell
+# Note: run.js handles virtual environment activation (creation, pip install, and env vars) internally.
 if command -v node &> /dev/null; then
     node run.js
 else
