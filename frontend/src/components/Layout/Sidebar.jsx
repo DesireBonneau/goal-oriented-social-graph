@@ -1,16 +1,23 @@
-import React from 'react';
-import { X, UserPlus, Briefcase, GraduationCap } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, UserPlus, UserMinus, Briefcase, GraduationCap, ChevronDown, ChevronUp } from 'lucide-react';
+import { graphConfig } from '../../config/graphConfig';
 
 /**
  * @param {Object} props
  * @param {import('../../utils/schema').Node | null} props.node
  * @param {() => void} props.onClose
+ * @param {(nodeId: string) => void} [props.onToggleConnection]
  */
-export default function Sidebar({ node, onClose }) {
+export default function Sidebar({ node, onClose, onToggleConnection }) {
+    const [showOptions, setShowOptions] = useState(false);
+
     if (!node) return null;
 
+    const isSelf = node.id === graphConfig.selfId;
+    const isConnected = node.isConnected;
+
     return (
-        <div className="absolute top-0 right-0 h-full w-80 bg-slate-800/95 backdrop-blur shadow-xl border-l border-slate-700 p-6 flex flex-col text-slate-100 transition-transform transform translate-x-0">
+        <div className="absolute top-0 right-0 h-full w-80 z-30 bg-slate-800/95 backdrop-blur shadow-xl border-l border-slate-700 p-6 flex flex-col text-slate-100 transition-transform transform translate-x-0">
             {/* Header */}
             <div className="flex justify-between items-start mb-6">
                 <div>
@@ -69,12 +76,38 @@ export default function Sidebar({ node, onClose }) {
             </div>
 
             {/* Action */}
-            <div className="mt-6 pt-6 border-t border-slate-700">
-                <button className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-2 px-4 rounded-lg font-medium transition shadow-lg shadow-blue-900/20">
-                    <UserPlus size={18} />
-                    Add Connection
-                </button>
-            </div>
+            {!isSelf && (
+                <div className="mt-6 pt-6 border-t border-slate-700">
+                    {isConnected ? (
+                        <div>
+                            <button
+                                onClick={() => setShowOptions(!showOptions)}
+                                className="w-full flex items-center justify-between text-slate-400 hover:text-slate-200 py-2 px-3 rounded transition text-sm"
+                            >
+                                <span>Options</span>
+                                {showOptions ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            </button>
+                            {showOptions && (
+                                <button
+                                    onClick={() => onToggleConnection?.(node.id)}
+                                    className="w-full flex items-center justify-center gap-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 hover:text-red-300 py-2 px-4 rounded-lg font-medium transition mt-2"
+                                >
+                                    <UserMinus size={18} />
+                                    Remove Connection
+                                </button>
+                            )}
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => onToggleConnection?.(node.id)}
+                            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-2 px-4 rounded-lg font-medium transition shadow-lg shadow-blue-900/20"
+                        >
+                            <UserPlus size={18} />
+                            Add Connection
+                        </button>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

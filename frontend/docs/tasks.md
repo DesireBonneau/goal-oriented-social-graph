@@ -1,0 +1,46 @@
+# Tasks
+
+- [x] Project Setup
+    - [x] Initialize Vite + React (JavaScript)
+    - [x] Configure Tailwind CSS
+    - [x] Setup project structure (components, hooks, contexts, utils)
+- [x] Core Components Implementation
+    - [x] Create Mock Data Generator
+    - [x] Implement `GraphVisualization` component using `react-force-graph-2d`
+    - [x] Implement Side Panel (Node Inspector)
+    - [x] Implement Smart Search Bar
+- [ ] Visual Polish & Interaction
+    - [x] Integrate components in App.jsx
+    - [x] Integrate components in App.jsx
+    - [x] Implement Camera Re-centering and Zoom interactions
+    - [x] Add "Fuzzy Connection" styling (dotted lines, glow)
+    - [x] Implement data verification (Schema validation without TS)
+    - [x] Simulate "Goal Search" flow with mock backend response
+- [x] Onboarding & Data
+    - [x] Implement "LinkedIn Connections Upload" (JSON/CSV parser)
+    - [x] create McGill Email validation/Auth mock
+    - [x] Create Profile Editor (Major, Minor, Experience form)
+
+## Known Issues & Future Features
+- [x] **UI/UX: Move 2D/3D Toggle**
+  - ~~**Issue**: Current position (Top-Right) conflicts or is not preferred.~~
+  - **Fixed**: Moved to Top-Left in `App.jsx` (changed `right-4` → `left-4`).
+- [x] **Bug: Sidebar Cannot Close**
+  - ~~**Issue**: The close button in the sidebar appears non-functional.~~
+  - **Fixed**: Added `z-30` class to sidebar container in `Sidebar.jsx` to ensure it renders above graph canvas.
+- [x] **UX: Smooth 2D/3D Transition**
+  - ~~**Issue**: Switching views resets the graph layout and camera, causing disorientation.~~
+  - **Fixed**: Added position preservation in `GraphViz.jsx`:
+    - Store node positions (`x`, `y`, `z`) in a ref on each engine tick
+    - Restore and temporarily fix (`fx`, `fy`, `fz`) positions during transitions
+    - Use `cooldownTicks` and `warmupTicks` to prevent simulation from scattering nodes
+- [ ] **Bug: Search Destroys Graph Layout**
+  - **Issue**: Filtering nodes causes them to reset positions and lose structure ("equally spaced").
+  - **Cause**: `simulateSearch` in `mockData.js` returns new object references. `react-force-graph` treats them as new nodes and resets the physics simulation.
+  - **Fix**: Modify `simulateSearch` to update existing node objects or copy `x,y,z` coordinates to preserve the force layout.
+- [ ] **Feature: Full Graph Highlighting**
+  - **Issue**: Only nodes are highlighted on selection/hover.
+  - **Fix**: Update `GraphViz.jsx` `linkColor` and `linkWidth` props to highlight edges connecting to the active node.
+- [x] **Data: Mock Name Generator**
+  - ~~**Issue**: Users are named "Student 1", "Student 2".~~
+  - **Fixed**: Added `FIRST_NAMES`, `LAST_NAMES` arrays and `generateName()` function in `mockData.js`.
