@@ -9,6 +9,8 @@ This monorepo contains two main parts:
 - **[Frontend](./frontend/README.md)**: React + Vite application (UI).
 - **[Backend](./backend/README.md)**: Flask + MongoDB application (API).
 
+> **AI Agents & Contributors**: Please read [LLM_CONTEXT.md](./LLM_CONTEXT.md) for architectural context and guidelines.
+
 Please refer to the detailed `README.md` in each directory for specific architecture and contribution guides.
 
 ## Quick Start
