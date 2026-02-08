@@ -76,6 +76,10 @@ function runQuietly(command, message) {
 const args = process.argv.slice(2);
 const isClean = args.includes('--clean');
 
+// --- User Config ---
+const PYTHON_OVERRIDE = null; // Set to specific path like 'C:\\Python311\\python.exe' to force a version
+// -------------------
+
 // Need to wrap in async for sleep
 (async () => {
 
@@ -179,8 +183,11 @@ const isClean = args.includes('--clean');
     }
 
     // Check Python
-    let pythonCmd = 'python3';
-    if (isWin) {
+    let pythonCmd = PYTHON_OVERRIDE || 'python3';
+
+    if (PYTHON_OVERRIDE) {
+        log(`Using Python Override: ${PYTHON_OVERRIDE}`, 'yellow');
+    } else if (isWin) {
         try {
             execSync('python --version', { stdio: 'ignore' });
             pythonCmd = 'python';

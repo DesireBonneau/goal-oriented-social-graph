@@ -39,6 +39,20 @@ node run.js --clean
 - **Port Cleanup**: Automatically kills processes on default ports (5000/5173).
 - **Volta Support**: Switches to Node 22 automatically if Volta is installed.
 - **Parallel Run**: Starts Flask and Vite in a single terminal.
+- **Parallel Run**: Starts Flask and Vite in a single terminal.
+
+### 3. Authentication & Bypass
+- **Login**: Use your McGill email and password.
+- **Guest Mode**: Click "Continue as Guest" on the login screen to explore the graph without an account.
+- **Registration**: Sign up with a valid McGill email if you don't have an account.
+
+### 4. Database Seeding (First Run)
+To populate the graph with visual data (mock students/connections):
+```bash
+# While backend is running (port 5000)
+curl.exe -X POST http://localhost:5000/api/seed
+```
+*Note: This creates ~40 users in your MongoDB.*
 
 ---
 

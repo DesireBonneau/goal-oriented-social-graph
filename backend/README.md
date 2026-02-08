@@ -42,10 +42,15 @@ FLASK_ENV=development
 ### User
 - `POST /api/user`: Create a new user profile.
 - `PATCH /api/user`: Update user profile.
+- `POST /api/login`: Login with email/password.
+
+### CV
+- `POST /api/cv/extract`: Extract data from PDF resume.
 
 ### Graph
-- `GET /api/graph`: Retrieve the node/link structure.
+- `GET /api/graph`: Retrieve the node/link structure (from MongoDB).
 - `POST /api/search`: Run similarity search on the graph.
+- `POST /api/seed`: Populate the database with mock data (Dev only).
 
 ### System
 - `GET /health`: Check DB connection status.

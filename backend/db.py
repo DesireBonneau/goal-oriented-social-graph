@@ -21,6 +21,8 @@ def get_db():
     # Check if we are in testing mode
     if os.environ.get('FLASK_ENV') == 'testing':
         return client['social_graph_test']
+    elif os.environ.get('FLASK_ENV') == 'development':
+        return client['social_graph_dev']
     
     return client['social_graph_prod']
 

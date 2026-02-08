@@ -16,33 +16,48 @@ function App() {
   const handleRegistrationComplete = async (userData) => {
     try {
       console.log("Registering user:", userData);
-      // Create user in backend
-      const response = await api.createUser(userData);
-      // Backend returns { message, id }. We might want to fetch the graph here or just set user.
-      // For now, let's look at the response or just trust the input userData + id
-      setUser({ ...userData, id: response.id });
+
+      let finalUser = userData;
+
+      // Only create user in backend if NOT a guest and NOT already logged in (has ID)
+      if (!userData.isGuest && !userData.id) {
+        const response = await api.createUser(userData);
+        finalUser = { ...userData, id: response.id };
+      }
+
+      setUser(finalUser);
 
       // Load initial graph
       const data = await api.getGraph();
 
-      // Find "Me" node and update it locally if needed
-      // Assuming backend might not immediately index the new user in the graph response 
-      // depending on implementation, but let's assume it returns a generic graph 
-      // and we patch "user_0" or the new user into it.
-      // For this demo, let's trust the graph response or inject "Me".
+      // If NOT a guest, inject/update "Me" node
+      if (!userData.isGuest) {
+        const meNodeIndex = data.nodes.findIndex(n => n.id === 'user_0' || n.email === userData.email);
 
-      // Injecting "Me" as user_0 for visualization purposes if not present
-      const meNodeIndex = data.nodes.findIndex(n => n.id === 'user_0' || n.email === userData.email);
+        if (meNodeIndex !== -1) {
+          data.nodes[meNodeIndex] = {
+            ...data.nodes[meNodeIndex],
+            name: `${userData.firstName} ${userData.lastName}`,
+            info: {
+              major: userData.major,
+              experience: userData.experience
+            }
+          };
+        }
+      } else {
+        // If Guest, we must remove the "You" / "user_0" node from the data completely
+        // because the backend generates it by default.
+        data.nodes = data.nodes.filter(n => n.id !== 'user_0');
+        data.links = data.links.filter(l => l.source !== 'user_0' && l.target !== 'user_0');
 
-      if (meNodeIndex !== -1) {
-        data.nodes[meNodeIndex] = {
-          ...data.nodes[meNodeIndex],
-          name: `${userData.firstName} ${userData.lastName}`,
-          info: {
-            major: userData.major,
-            experience: userData.experience
-          }
-        };
+        // Pick a random node to center around so the graph doesn't look empty/far away
+        if (data.nodes.length > 0) {
+          const randomNode = data.nodes[Math.floor(Math.random() * data.nodes.length)];
+          // We set selectedNode which triggers the sidebar and camera focus
+          // If we just want camera focus without sidebar, we might need a different state, 
+          // but "center around" implies focus. Let's select it for now so they see *something*.
+          setSelectedNode(randomNode);
+        }
       }
 
       setGraphData(data);
@@ -118,7 +133,7 @@ function App() {
       )}
 
       <div className="absolute bottom-4 left-4 pointer-events-none opacity-50">
-        <h1 className="text-xl font-bold tracking-tighter">Goal<span className="text-blue-500">Graph</span></h1>
+        <h1 className="text-xl font-bold tracking-tighter">Mc<span className="text-blue-500">Finder</span></h1>
         <p className="text-xs">McGill University • Hackathon Demo</p>
       </div>
     </div>

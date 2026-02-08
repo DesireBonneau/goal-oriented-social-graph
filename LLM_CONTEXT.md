@@ -30,5 +30,10 @@ Use these files as your primary source of truth for specific domains.
 1.  **Schema Changes**: If you modify the MongoDB schema (e.g., adding a field to `users`), you **MUST** update `backend/LLM_CONTEXT.md` to reflect the new structure.
 2.  **State Management**: If you introduce a global store (Redux/Zustand) or change how API calls are handled in the frontend, you **MUST** update `frontend/LLM_CONTEXT.md`.
 3.  **New Patterns**: If you introduce a new pattern (e.g., "All forms must use `react-hook-form`"), document it in the relevant Context file.
+4.  **Authentication**:
+    -   Backend uses `werkzeug.security` for password hashing.
+    -   `POST /api/login` handles authentication.
+    -   Frontend supports "Guest" access via `AuthGate` bypass.
+
 
 **Rule of Thumb**: Leave the context cleaner than you found it. Future agents will rely on your updates.

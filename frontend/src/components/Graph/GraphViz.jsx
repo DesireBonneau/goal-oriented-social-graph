@@ -147,6 +147,9 @@ export default function GraphViz({ data, onNodeClick, focusNode, is3D = false })
     // Set initial zoom level when graph first loads or mode changes
     useEffect(() => {
         if (fgRef.current && data.nodes?.length > 0) {
+            // If we have a focusNode, don't reset to 0,0,0. Let the focusNode effect handle it.
+            if (focusNode) return;
+
             const timer = setTimeout(() => {
                 const { initialZoom3D, initialZoom2D, animationDuration } = graphConfig.camera;
                 if (is3D) {
@@ -158,7 +161,7 @@ export default function GraphViz({ data, onNodeClick, focusNode, is3D = false })
             }, 300);
             return () => clearTimeout(timer);
         }
-    }, [data.nodes?.length, is3D]);
+    }, [data.nodes?.length, is3D, focusNode]);
 
     // --- 3D Rendering Logic ---
     const nodeThreeObject = useCallback((node) => {
