@@ -50,7 +50,6 @@ def extract_cv_data(file_stream):
     {{
         "firstName": "String",
         "lastName": "String",
-        "email": "String (if found, else null)",
         "graduationYear": "Integer (or null)",
         "faculty": "String (e.g., 'Faculty of Science', or null)",
         "major": "String (e.g., 'Computer Science', or null)",
@@ -64,7 +63,7 @@ def extract_cv_data(file_stream):
                 "location": "String"
             }}
         ],
-        "linkedinUrl": "String (full URL if found, else null)",
+        "linkedinHandle": "String (just the handle after /in/, e.g. 'gabbrousset', or null)",
         "portfolioUrl": "String (Github/Personal Site, else null)"
     }}
 
@@ -73,7 +72,7 @@ def extract_cv_data(file_stream):
 
     try:
         response = client.models.generate_content(
-            model='gemini-1.5-flash',
+            model='gemini-2.0-flash',
             contents=prompt
         )
         # Clean up code blocks if Gemini returns them despite instructions
