@@ -1,0 +1,6 @@
+[tool.pyright]
+venvPath = "backend"
+venv = ".venv"
+
+[tool.isort]
+profile = "black"

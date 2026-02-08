@@ -1,0 +1,234 @@
+import os
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+from dotenv import load_dotenv
+from werkzeug.security import generate_password_hash, check_password_hash
+from db import get_db, check_connection
+from algorithm import calculate_similarity, generate_mock_graph_data
+from services.cv_service import extract_cv_data
+
+# Load environment variables
+# Load environment variables
+load_dotenv()
+
+app = Flask(__name__)
+
+# Configure CORS
+# Allow requests from the frontend URL specified in env
+client_url = os.environ.get('CLIENT_URL')
+if not client_url:
+    raise ValueError("No CLIENT_URL found in environment variables. Please check your .env file.")
+
+CORS(app, resources={r"/api/*": {"origins": client_url}})
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    db_status, db_message = check_connection()
+    status_code = 200 if db_status else 500
+    
+    return jsonify({
+        "status": "healthy" if db_status else "unhealthy",
+        "database": {
+            "connected": db_status,
+            "message": db_message
+        }
+    }), status_code
+
+import secrets
+from functools import wraps
+from seed import seed_database
+
+# Helper for Token Auth
+def require_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+             return jsonify({"error": "Missing Authorization Header"}), 401
+        
+        try:
+            token = auth_header.split(" ")[1] # Bearer <token>
+        except IndexError:
+             return jsonify({"error": "Invalid Token Format"}), 401
+             
+        db = get_db()
+        user = db.users.find_one({"token": token})
+        
+        if not user:
+             return jsonify({"error": "Invalid or Expired Token"}), 401
+             
+        return f(*args, **kwargs)
+    return decorated
+
+@app.route('/api/seed', methods=['POST'])
+def seed_db_route():
+    try:
+        result = seed_database()
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/user', methods=['POST'])
+def create_user():
+    db = get_db()
+    data = request.json
+    
+    # Basic validation
+    if not data or 'email' not in data:
+        return jsonify({"error": "Email is required"}), 400
+    
+    # Extended validation could go here, but we trust the schema for now
+    # The frontend is responsible for sending the correct structure
+    # We just ensure email is unique and valid (backend check)
+    if not data['email'].endswith('@mail.mcgill.ca') and not data['email'].endswith('@mcgill.ca'):
+         return jsonify({"error": "Must be a McGill email"}), 400
+        
+    users = db.users
+    existing = users.find_one({"email": data['email']})
+    
+    if existing:
+        return jsonify({"message": "User already exists", "id": str(existing['_id'])}), 200
+        
+    # Hash password if provided
+    if 'password' in data:
+        data['password'] = generate_password_hash(data['password'])
+
+    # Generate Token
+    token = secrets.token_hex(16)
+    data['token'] = token
+
+    result = users.insert_one(data)
+    return jsonify({"message": "User created", "id": str(result.inserted_id), "token": token}), 201
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    db = get_db()
+    data = request.json
+    
+    if not data or 'email' not in data or 'password' not in data:
+        return jsonify({"error": "Email and password are required"}), 400
+        
+    users = db.users
+    user = users.find_one({"email": data['email']})
+    
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+        
+    # Handle legacy users or partial registrations
+    if 'password' not in user:
+        return jsonify({"error": "User has no password set. Please register again."}), 401
+        
+    if not check_password_hash(user['password'], data['password']):
+        return jsonify({"error": "Invalid password"}), 401
+        
+    # Generate/Update Token on Login
+    token = secrets.token_hex(16)
+    users.update_one({"_id": user['_id']}, {"$set": {"token": token}})
+    
+    # Remove password from response
+    user['_id'] = str(user['_id'])
+    user.pop('password', None)
+    user['token'] = token
+        
+    return jsonify(user), 200
+
+@app.route('/api/user', methods=['PATCH'])
+@require_auth
+def update_user():
+    db = get_db()
+    data = request.json
+    email = data.get('email')
+    
+    if not email:
+        return jsonify({"error": "Email is required for update"}), 400
+        
+    users = db.users
+    
+    # Security check: Ensure token matches the user being updated
+    auth_header = request.headers.get('Authorization')
+    token = auth_header.split(" ")[1]
+    requester = users.find_one({"token": token})
+    
+    if not requester or requester['email'] != email:
+         return jsonify({"error": "Unauthorized: You can only modify your own profile"}), 403
+
+    result = users.update_one({"email": email}, {"$set": data})
+    
+    if result.matched_count == 0:
+        return jsonify({"error": "User not found"}), 404
+        
+    return jsonify({"message": "User updated"}), 200
+
+@app.route('/api/cv/extract', methods=['POST'])
+def extract_cv():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+        
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+        
+    if file:
+        try:
+            # Pass the file stream directly to the service
+            extracted_data = extract_cv_data(file.stream)
+            if "error" in extracted_data:
+                return jsonify(extracted_data), 500
+            return jsonify(extracted_data), 200
+        except Exception as e:
+             return jsonify({"error": str(e)}), 500
+
+@app.route('/api/graph', methods=['GET'])
+def get_graph():
+    db = get_db()
+    
+    # Fetch all users
+    users_cursor = db.users.find({})
+    nodes = []
+    for u in users_cursor:
+        # Transform DB user to Node format
+        nodes.append({
+            "id": str(u['_id']),
+            "email": u.get('email'),
+            "name": f"{u.get('firstName', '')} {u.get('lastName', '')}".strip(),
+            "info": {
+                "major": u.get('major', 'Unknown'),
+                "experience": u.get('experience', [])
+            },
+            "val": 5, # Default size
+            "score": 1.0
+        })
+
+    # Fetch connections
+    # Note: 'connections' collection might not exist yet if not seeded
+    links = []
+    if 'connections' in db.list_collection_names():
+        connections_cursor = db.connections.find({})
+        for c in connections_cursor:
+            links.append({
+                "source": c['source'],
+                "target": c['target'],
+                "type": c.get('type', 'direct'),
+                "strength": c.get('strength', 0.5)
+            })
+
+    return jsonify({"nodes": nodes, "links": links})
+
+@app.route('/api/search', methods=['POST'])
+def search_graph():
+    data = request.json
+    query = data.get('query', '')
+    
+    # Get current graph state (or re-generate/fetch)
+    # Ideally, we'd pass the current user's context too
+    graph = generate_mock_graph_data()
+    
+    # Run algorithm
+    updated_graph = calculate_similarity(query, graph)
+    
+    return jsonify(updated_graph)
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=True, port=port)
