@@ -86,19 +86,32 @@ export default function GraphViz({ data, onNodeClick, focusNode, is3D = false })
     // Camera Focus Effect (2D + 3D)
     useEffect(() => {
         if (focusNode && fgRef.current) {
+            const { focusDistance, focusZoom2D, animationDuration } = graphConfig.camera;
             if (is3D) {
-                // 3D Camera Logic
-                const distance = graphConfig.camera.focusDistance;
-                const distRatio = 1 + distance / Math.hypot(focusNode.x, focusNode.y, focusNode.z);
+                // 3D Camera Logic - just look at the node without rotating the whole view
+                // Calculate a position that looks at the node from a reasonable distance
+                const lookAtPos = { x: focusNode.x, y: focusNode.y, z: focusNode.z };
+                // Move camera to keep same relative viewing angle but closer to node
+                const currentPos = fgRef.current.cameraPosition();
+                const dirX = currentPos.x - focusNode.x;
+                const dirY = currentPos.y - focusNode.y;
+                const dirZ = currentPos.z - focusNode.z;
+                const dist = Math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ);
+                const scale = focusDistance / Math.max(dist, 1);
+
                 fgRef.current.cameraPosition(
-                    { x: focusNode.x * distRatio, y: focusNode.y * distRatio, z: focusNode.z * distRatio },
-                    { x: focusNode.x, y: focusNode.y, z: focusNode.z },
-                    graphConfig.camera.animationDuration * 4
+                    {
+                        x: focusNode.x + dirX * scale,
+                        y: focusNode.y + dirY * scale,
+                        z: focusNode.z + dirZ * scale
+                    },
+                    lookAtPos,
+                    animationDuration * 2
                 );
             } else {
                 // 2D Camera Logic
-                fgRef.current.centerAt(focusNode.x, focusNode.y, 1000);
-                fgRef.current.zoom(4, 2000); // Zoom level 4 might be reasonable
+                fgRef.current.centerAt(focusNode.x, focusNode.y, animationDuration);
+                fgRef.current.zoom(focusZoom2D, animationDuration);
             }
         }
     }, [focusNode, is3D]);
@@ -245,6 +258,8 @@ export default function GraphViz({ data, onNodeClick, focusNode, is3D = false })
                     nodeCanvasObjectMode={() => "replace"}
                     linkColor={() => "rgba(255,255,255,0.2)"}
                     linkLineDash={link => link.type === 'fuzzy' ? [5, 5] : null}
+                    minZoom={graphConfig.camera.minZoom2D}
+                    maxZoom={graphConfig.camera.maxZoom2D}
                 />
             )}
         </div>

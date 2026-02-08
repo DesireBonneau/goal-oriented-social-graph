@@ -81,10 +81,26 @@ function App() {
   }, []);
 
   const handleSearch = useCallback((query) => {
-    setGraphData(prevData => simulateSearch(prevData, query));
+    setGraphData(prevData => {
+      // simulateSearch mutates in place, but we need a new reference for React
+      const updated = simulateSearch(prevData, query);
+      return { ...updated }; // Spread to create new reference
+    });
   }, []);
 
-  const handleCloseSidebar = () => setSelectedNode(null);
+  const handleToggleConnection = useCallback((nodeId) => {
+    setGraphData(prevData => {
+      const nodes = prevData.nodes.map(node => {
+        if (node.id === nodeId) {
+          return { ...node, isConnected: !node.isConnected };
+        }
+        return node;
+      });
+      return { ...prevData, nodes };
+    });
+    // Update selected node if it's the one being toggled
+    setSelectedNode(prev => prev?.id === nodeId ? { ...prev, isConnected: !prev.isConnected } : prev);
+  }, []);
 
   // Render Logic
   if (onboardingStep === 'auth') {
@@ -134,7 +150,11 @@ function App() {
       </div>
 
       {selectedNode && (
-        <Sidebar node={selectedNode} onClose={handleCloseSidebar} />
+        <Sidebar
+          node={selectedNode}
+          onClose={() => setSelectedNode(null)}
+          onToggleConnection={handleToggleConnection}
+        />
       )}
 
       <div className="absolute bottom-4 left-4 pointer-events-none opacity-50">

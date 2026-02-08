@@ -38,8 +38,13 @@ export const graphConfig = {
     camera: {
         initialZoom3D: 150,     // Initial camera z position in 3D
         initialZoom2D: 3.5,     // Initial zoom level in 2D
-        focusDistance: 120,     // Distance when focusing on a node
+        focusDistance: 200,     // Distance when focusing on a node (higher = less zoom)
+        focusZoom2D: 2.5,       // Zoom level when focusing on a node in 2D
         animationDuration: 500, // ms for zoom animations
+        minZoom3D: 80,          // Closest zoom in 3D (lower z = closer)
+        maxZoom3D: 500,         // Farthest zoom in 3D (higher z = farther)
+        minZoom2D: 0.5,         // Minimum zoom level in 2D
+        maxZoom2D: 8,           // Maximum zoom level in 2D
     },
 
     // Node sizing
