@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Optional, Dict, Any, List, Iterable
+from typing import Optional, Dict, Any, List
 import math
 import os
 
@@ -29,7 +29,8 @@ def _months_between(a: date, b: date) -> int:
     return (b.year - a.year) * 12 + (b.month - a.month)
 
 
-def _decay_score(end_date: Optional[date], *, half_life_months: int = 24) -> float:
+# For now, the decay is of 5 years
+def _decay_score(end_date: Optional[date], *, half_life_months: int = 60) -> float:
     """
     Exponential decay: score = 0.5^(months / half_life_months).
     If no end_date is provided, treat as current (score = 1.0).
@@ -40,70 +41,76 @@ def _decay_score(end_date: Optional[date], *, half_life_months: int = 24) -> flo
     return math.pow(0.5, months / max(1, half_life_months))
 
 
+
+
+# Dataclass for the internships and work experiences
 @dataclass
 class Experience:
+    position: str
     company: str
-    start_date: Optional[str] = None  # "YYYY-MM" or "YYYY-MM-DD"
-    end_date: Optional[str] = None    # "YYYY-MM" or "YYYY-MM-DD"
-    location: Optional[str] = None
-    role: Optional[str] = None
-    industry: Optional[List[tuple[str, float]]] = None
+    dates: str
+    location: str
+    industries: List[str] = field(default_factory=list)
 
-
-    def update_industry(self) -> None:
+    def update_industries(self) -> None:
         """
-        Fills the industry field using get_industry(position, company).
+        Fills the industries field using get_industry(position, company).
         """
-        position = self.role or ""
-        self.industry = get_industry(position=position, company=self.company)
-
+        scored = get_industry(position=self.position, company=self.company) or []
+        self.industries = [name for name, _ in scored]
 
     def to_dict(self) -> Dict[str, Any]:
-        end_dt = _parse_date(self.end_date)
         return {
+            "position": self.position,
             "company": self.company,
-            "start_date": self.start_date,
-            "end_date": self.end_date,
+            "dates": self.dates,
             "location": self.location,
-            "role": self.role,
-            "industry": self.industry,
-            "decay_score": _decay_score(end_dt),
+            "industries": self.industries,
         }
 
 
 @dataclass
 class UserProfile:
-    user_id: str
-    faculty: Optional[str] = None
-    major: Optional[str] = None
+    email: str
+    first_name: str
+    last_name: str
+    graduation_year: int
+    faculty: str
+    major: str
     minor: Optional[str] = None
-    preferred_place_of_work: Optional[str] = None
-
-    internships: List[Experience] = field(default_factory=list)
-    work_experiences: List[Experience] = field(default_factory=list)
-
-    # You can store any other attributes you need in this dict
-    extra_attributes: Dict[str, Any] = field(default_factory=dict)
+    clubs: List[str] = field(default_factory=list)
+    experience: List[Experience] = field(default_factory=list)
+    socials: Dict[str, Any] = field(default_factory=lambda: {"linkedinUrl": "", "other": []})
+    # Their emails
+    friends: List[str] = field(default_factory=list)
+    # Top 50 for Computed Similarity Cache (Implicit Graph)
+    connectionStrength: List[Dict[str, Any]] = field(default_factory=list)
+    preferred_work_place: Optional[str] = None
 
 
     def update_industries(self) -> None:
         """
-        Updates industry for all internships and work experiences.
+        Updates industries for all experience entries.
         """
-        for exp in self._all_experiences():
-            exp.update_industry()
+        for exp in self.experience:
+            exp.update_industries()
 
 
     def to_mongo_document(self) -> Dict[str, Any]:
         return {
-            "user_id": self.user_id,
+            "email": self.email,
+            "first_name": self.first_name,
+            "last_name": self.last_name,
+            "graduation_year": self.graduation_year,
             "faculty": self.faculty,
             "major": self.major,
             "minor": self.minor,
-            "preferred_place_of_work": self.preferred_place_of_work,
-            "internships": [exp.to_dict() for exp in self.internships],
-            "work_experiences": [exp.to_dict() for exp in self.work_experiences],
-            "extra_attributes": self.extra_attributes,
+            "clubs": self.clubs,
+            "experience": [exp.to_dict() for exp in self.experience],
+            "socials": self.socials,
+            "friends": self.friends,
+            "connectionStrength": self.connectionStrength,
+            "preferred_work_place": self.preferred_work_place,
         }
 
 
@@ -120,19 +127,17 @@ class UserProfile:
 
     def update_in_mongodb(self, new_values: Dict[str, Any]) -> None:
         """
-        Updates this user in MongoDB by user_id with provided fields.
+        Updates this user in MongoDB by email with provided fields.
         """
         client, collection = self._get_mongo_collection()
         try:
-            collection.update_one({"user_id": self.user_id}, {"$set": new_values})
+            collection.update_one({"email": self.email}, {"$set": new_values})
         finally:
             client.close()
 
 
-    def _all_experiences(self) -> Iterable[Experience]:
-        return list(self.internships) + list(self.work_experiences)
-
-    def _get_mongo_collection(self):
+    @staticmethod
+    def _get_mongo_collection():
         """
         Expects the following in backend/.env:
           MONGO_URI=<your-uri>
