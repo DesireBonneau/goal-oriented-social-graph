@@ -49,7 +49,7 @@ class Experience:
     position: str
     company: str
     dates: str
-    location: Dict[str, str] = field(default_factory=lambda: {"city": "", "country": ""})
+    location: str
     industries: List[str] = field(default_factory=list)
 
     def update_industries(self) -> None:
@@ -151,12 +151,12 @@ class UserProfile:
 
         mongo_uri = os.getenv("MONGO_URI")
         db_name = os.getenv("MONGO_DB_NAME")
-        collection_name = os.getenv("MONGO_COLLECTION_NAME")
+        collection_name = os.getenv("MONGO_USER_COLLECTION")
 
         if not mongo_uri:
             raise ValueError("Missing MongoDB environment variable: MONGO_URI.")
         if not collection_name:
-            raise ValueError("Missing MongoDB environment variable: MONGO_COLLECTION_NAME.")
+            raise ValueError("Missing MongoDB environment variable: MONGO_USER_COLLECTION.")
 
         client = MongoClient(mongo_uri)
 
