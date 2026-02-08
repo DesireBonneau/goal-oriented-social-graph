@@ -1,0 +1,29 @@
+weights:
+       faculty: 0.10
+       major: 0.25
+       minor: 0.12
+       preferred_work_country: 0.08
+       professional_experience:
+         total: 0.45
+         company: 0.37
+         industry: 0.28
+         duration: 0.15
+         recency: 0.15
+         country: 0.05
+
+     decay:
+       recency:
+         type: exponential
+         half_life_months: 36   # after 3 years value is halved
+         redistribution:
+           to_academics:
+             share_of_decay: 0.3333
+             breakdown:
+               major: 0.50
+               minor: 0.35
+               faculty: 0.15
+           to_professional_experience:
+             share_of_decay: 0.6667
+             breakdown:
+               industry: 0.70
+               country: 0.30
