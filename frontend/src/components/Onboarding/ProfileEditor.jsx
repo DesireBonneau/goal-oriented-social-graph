@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { User, BookOpen, Briefcase, Users, Link as LinkIcon, Plus, Trash2 } from 'lucide-react';
+import AutocompleteInput from '../UI/AutocompleteInput';
+import { MAJORS, MINORS, FACULTIES } from '../../data/academicOptions';
 
 export default function ProfileEditor({ onSave, initialData = {} }) {
+    // Extract LinkedIn handle from full URL if provided
+    const getLinkedinHandle = () => {
+        const url = initialData.linkedinUrl || initialData.socials?.linkedinUrl || "";
+        return url.replace(/^https?:\/\/(www\.)?linkedin\.com\/in\//i, "");
+    };
+
     const [formData, setFormData] = useState({
         firstName: initialData.firstName || "",
         lastName: initialData.lastName || "",
@@ -10,7 +18,7 @@ export default function ProfileEditor({ onSave, initialData = {} }) {
         faculty: initialData.faculty || "",
         major: initialData.major || "",
         minor: initialData.minor || "",
-        linkedinUrl: initialData.linkedinUrl || "",
+        linkedinHandle: getLinkedinHandle(),
         clubs: initialData.clubs || [],
         experience: initialData.experience || [],
         preferredWorkPlace: initialData.preferredWorkPlace || ""
@@ -67,7 +75,19 @@ export default function ProfileEditor({ onSave, initialData = {} }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        onSave(formData);
+        // Build full LinkedIn URL from handle
+        const dataToSave = {
+            ...formData,
+            linkedinUrl: undefined, // Remove old field if present
+            socials: {
+                linkedinUrl: formData.linkedinHandle
+                    ? `https://linkedin.com/in/${formData.linkedinHandle}`
+                    : "",
+                other: []
+            }
+        };
+        delete dataToSave.linkedinHandle;
+        onSave(dataToSave);
     };
 
     return (
@@ -105,15 +125,18 @@ export default function ProfileEditor({ onSave, initialData = {} }) {
                         </div>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-slate-400 mb-1">LinkedIn URL</label>
-                        <div className="relative">
-                            <LinkIcon size={16} className="absolute left-3 top-3 text-slate-500" />
+                        <label className="block text-sm font-medium text-slate-400 mb-1">LinkedIn</label>
+                        <div className="relative flex">
+                            <span className="inline-flex items-center px-3 bg-slate-700 border border-r-0 border-slate-600 rounded-l-lg text-slate-400 text-sm">
+                                <LinkIcon size={14} className="mr-1" />
+                                linkedin.com/in/
+                            </span>
                             <input
-                                type="url"
-                                className="w-full bg-slate-900 border border-slate-600 rounded-lg pl-10 pr-4 py-2 text-white focus:ring-2 focus:ring-emerald-500 outline-none transition"
-                                value={formData.linkedinUrl}
-                                onChange={e => handleChange('linkedinUrl', e.target.value)}
-                                placeholder="https://linkedin.com/in/..."
+                                type="text"
+                                className="flex-1 bg-slate-900 border border-slate-600 rounded-r-lg px-3 py-2 text-white focus:ring-2 focus:ring-emerald-500 outline-none transition"
+                                value={formData.linkedinHandle}
+                                onChange={e => handleChange('linkedinHandle', e.target.value)}
+                                placeholder="your-handle"
                             />
                         </div>
                     </div>
@@ -126,13 +149,12 @@ export default function ProfileEditor({ onSave, initialData = {} }) {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-slate-400 mb-1">Faculty</label>
-                            <input
-                                type="text"
-                                required
-                                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 outline-none transition"
+                            <AutocompleteInput
+                                options={FACULTIES}
                                 value={formData.faculty}
-                                onChange={e => handleChange('faculty', e.target.value)}
-                                placeholder="Science"
+                                onChange={(value) => handleChange('faculty', value)}
+                                placeholder="Faculty of Science"
+                                required
                             />
                         </div>
                         <div>
@@ -150,22 +172,20 @@ export default function ProfileEditor({ onSave, initialData = {} }) {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-slate-400 mb-1">Major</label>
-                            <input
-                                type="text"
-                                required
-                                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 outline-none transition"
+                            <AutocompleteInput
+                                options={MAJORS}
                                 value={formData.major}
-                                onChange={e => handleChange('major', e.target.value)}
+                                onChange={(value) => handleChange('major', value)}
                                 placeholder="Computer Science"
+                                required
                             />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-slate-400 mb-1">Minor / Concentration</label>
-                            <input
-                                type="text"
-                                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 outline-none transition"
+                            <AutocompleteInput
+                                options={MINORS}
                                 value={formData.minor}
-                                onChange={e => handleChange('minor', e.target.value)}
+                                onChange={(value) => handleChange('minor', value)}
                                 placeholder="Optional"
                             />
                         </div>

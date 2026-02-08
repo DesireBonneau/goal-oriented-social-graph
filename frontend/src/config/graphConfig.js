@@ -55,8 +55,18 @@ export const graphConfig = {
     },
 
     // User identification (the logged-in user's node ID)
-    selfId: 'user_0',
+    // Set dynamically via setCurrentUserId() after login
+    selfId: null,
 };
+
+/**
+ * Set the current user's ID for graph highlighting.
+ * Call this after login/register with the user's actual ID.
+ * @param {string | null} id - The user's MongoDB _id
+ */
+export function setCurrentUserId(id) {
+    graphConfig.selfId = id;
+}
 
 /**
  * Get the color for a node based on its properties.
