@@ -78,6 +78,8 @@ export default function ProfileEditor({ onSave, initialData = {} }) {
         // Build full LinkedIn URL from handle
         const dataToSave = {
             ...formData,
+            // Ensure graduationYear is an integer
+            graduationYear: formData.graduationYear ? parseInt(formData.graduationYear, 10) : null,
             linkedinUrl: undefined, // Remove old field if present
             socials: {
                 linkedinUrl: formData.linkedinHandle

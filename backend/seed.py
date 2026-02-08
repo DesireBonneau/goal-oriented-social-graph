@@ -1,6 +1,6 @@
 import random
 from db import get_db
-from algorithm import MAJORS, COMPANIES, FIRST_NAMES, LAST_NAMES, generate_name
+from algorithm import MAJORS, FACULTIES, COMPANIES, FIRST_NAMES, LAST_NAMES, generate_name
 
 def seed_database(num_users=40):
     db = get_db()
@@ -27,14 +27,19 @@ def seed_database(num_users=40):
             "firstName": first_name,
             "lastName": last_name,
             "email": email,
+            "faculty": random.choice(FACULTIES) if FACULTIES else "Faculty of Science",
             "major": random.choice(MAJORS),
+            "minor": random.choice(MAJORS) if random.random() > 0.7 else None,
+            "graduationYear": random.choice([2024, 2025, 2026, 2027]),
+            "clubs": random.sample(["AI Society", "CS Games", "HackMcGill", "CSUS", "ECSESS", "MUS"], k=random.randint(0, 3)),
             "experience": [
-                {"company": random.choice(COMPANIES), "position": "Intern", "dates": "Summer 2023"},
-                {"company": random.choice(COMPANIES), "position": "Fellow", "dates": "Summer 2022"}
+                {"company": random.choice(COMPANIES), "position": "Intern", "dates": "Summer 2023", "location": "Montreal"},
+                {"company": random.choice(COMPANIES), "position": "Fellow", "dates": "Summer 2022", "location": "Remote"}
             ],
-            "skills": ["Python", "React", "Data Science"] if i % 2 == 0 else ["Java", "Spring", "System Design"],
-            "interests": ["AI", "Hackathons"] if i % 2 == 0 else ["Web Dev", "Open Source"],
-            "isGuest": False
+            "socials": {
+                "linkedinUrl": f"https://linkedin.com/in/{first_name.lower()}{last_name.lower()}",
+                "other": []
+            }
         }
         result = users_collection.insert_one(user)
         created_users.append({**user, "_id": result.inserted_id})

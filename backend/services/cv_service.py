@@ -63,8 +63,7 @@ def extract_cv_data(file_stream):
                 "location": "String"
             }}
         ],
-        "linkedinHandle": "String (just the handle after /in/, e.g. 'gabbrousset', or null)",
-        "portfolioUrl": "String (Github/Personal Site, else null)"
+        "linkedinHandle": "String (just the handle after /in/, e.g. 'gabbrousset', or null)"
     }}
 
     Return ONLY the JSON. Do not include markdown formatting like ```json ... ```.
