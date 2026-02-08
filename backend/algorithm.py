@@ -69,7 +69,10 @@ def generate_mock_graph_data(N=40):
         "name": "You",
         "info": {
             "major": random.choice(MAJORS),
-            "experience": [random.choice(COMPANIES), "Research Assistant"]
+            "experience": [
+                {"company": random.choice(COMPANIES), "position": "Research Assistant", "dates": "2023-Present"},
+                {"company": random.choice(COMPANIES), "position": "Intern", "dates": "Summer 2022"}
+            ]
         },
         "val": 10,
         "score": 1.0,
@@ -86,7 +89,9 @@ def generate_mock_graph_data(N=40):
             "name": generate_name(),
             "info": {
                 "major": random.choice(MAJORS),
-                "experience": [random.choice(COMPANIES), "Intern"]
+                "experience": [
+                    {"company": random.choice(COMPANIES), "position": "Intern", "dates": "Summer 2023"}
+                ]
             },
             "val": score * 8 + 2,
             "score": score,
@@ -111,7 +116,9 @@ def generate_mock_graph_data(N=40):
             "name": generate_name(),
             "info": {
                 "major": random.choice(MAJORS),
-                "experience": [random.choice(COMPANIES), "Co-op"]
+                "experience": [
+                    {"company": random.choice(COMPANIES), "position": "Co-op", "dates": "Fall 2023"}
+                ]
             },
             "val": score * 8 + 2,
             "score": score,
@@ -139,7 +146,9 @@ def generate_mock_graph_data(N=40):
             "name": generate_name(),
             "info": {
                 "major": random.choice(MAJORS),
-                "experience": [random.choice(COMPANIES), "Volunteer"]
+                "experience": [
+                    {"company": random.choice(COMPANIES), "position": "Volunteer", "dates": "2022"}
+                ]
             },
             "val": score * 8 + 2,
             "score": score,
@@ -204,7 +213,20 @@ def calculate_similarity(query, graph):
             # Relevance check
             major_match = lower_query in node['info']['major'].lower()
             name_match = lower_query in node['name'].lower()
-            exp_match = any(lower_query in e.lower() for e in node['info']['experience'])
+            
+            # Handle experience as string or object
+            exp_match = False
+            for e in node['info']['experience']:
+                if isinstance(e, str):
+                    if lower_query in e.lower():
+                        exp_match = True
+                        break
+                elif isinstance(e, dict):
+                    # Check company, position, dates
+                    vals = [str(v).lower() for v in e.values()]
+                    if any(lower_query in v for v in vals):
+                        exp_match = True
+                        break
             
             relevant = major_match or name_match or exp_match
             

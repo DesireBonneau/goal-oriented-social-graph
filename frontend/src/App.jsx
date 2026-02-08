@@ -1,97 +1,70 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import GraphViz from './components/Graph/GraphViz';
 import Sidebar from './components/Layout/Sidebar';
 import SearchBar from './components/UI/SearchBar';
-import AuthGate from './components/Onboarding/AuthGate';
-import ProfileEditor from './components/Onboarding/ProfileEditor';
-import LinkedInImport from './components/Onboarding/LinkedInImport';
+import RegistrationFlow from './components/Onboarding/RegistrationFlow';
 import { api } from './services/api';
 
 function App() {
   // State
-  const [user, setUser] = useState(null); // { email, name, info... }
-  const [onboardingStep, setOnboardingStep] = useState('auth'); // 'auth', 'profile', 'import', 'graph'
+  const [user, setUser] = useState(null); // If null, show registration
   const [graphData, setGraphData] = useState({ nodes: [], links: [] });
   const [selectedNode, setSelectedNode] = useState(null);
   const [is3D, setIs3D] = useState(true);
 
   // Handlers
-  const handleLogin = (email) => {
-    setUser({ email });
-    setOnboardingStep('profile');
-  };
-
-  const handleSaveProfile = async (profileData) => {
-    const updatedUser = { ...user, ...profileData };
-    setUser(updatedUser);
-
-    // Create/Update user in backend
+  const handleRegistrationComplete = async (userData) => {
     try {
-      // We'll try to create, if it exists, maybe we update? 
-      // For now let's just create and ignore "exists" error or handle it gracefully
-      await api.createUser(updatedUser);
-    } catch (err) {
-      console.warn("Failed to sync user to backend", err);
-    }
+      console.log("Registering user:", userData);
 
-    setOnboardingStep('import');
-  };
+      let finalUser = userData;
 
-  const handleImport = async (importedConnections) => {
-    // Determine if we need to send these connections to backend?
-    // For now, let's just get the fresh graph from backend
-    try {
-      const data = await api.getGraph();
-
-      // Update "Me" node (user_0) with real profile (client side override for now)
-      // In a real app, the backend would return the graph *contextualized* to the user
-      const meNode = data.nodes.find(n => n.id === 'user_0');
-      if (meNode && user) {
-        meNode.name = user.name;
-        meNode.info = {
-          major: user.major,
-          experience: user.experience || []
-        };
+      // Only create user in backend if NOT a guest and NOT already logged in (has ID)
+      if (!userData.isGuest && !userData.id) {
+        const response = await api.createUser(userData);
+        finalUser = { ...userData, id: response.id };
       }
 
-      // Append imported connections (same logic as before, just appending to backend data)
-      const newNodes = [...data.nodes];
-      const newLinks = [...data.links];
+      setUser(finalUser);
 
-      importedConnections.forEach((conn, i) => {
-        newNodes.push(conn);
-        newLinks.push({
-          source: 'user_0',
-          target: conn.id,
-          strength: 0.8,
-          type: 'direct'
-        });
-      });
-
-      setGraphData({ nodes: newNodes, links: newLinks });
-      setOnboardingStep('graph');
-
-    } catch (err) {
-      console.error("Failed to load graph", err);
-    }
-  };
-
-  const handleSkipImport = async () => {
-    try {
+      // Load initial graph
       const data = await api.getGraph();
 
-      const meNode = data.nodes.find(n => n.id === 'user_0');
-      if (meNode && user) {
-        meNode.name = user.name;
-        meNode.info = {
-          major: user.major,
-          experience: user.experience || []
-        };
+      // If NOT a guest, inject/update "Me" node
+      if (!userData.isGuest) {
+        const meNodeIndex = data.nodes.findIndex(n => n.id === 'user_0' || n.email === userData.email);
+
+        if (meNodeIndex !== -1) {
+          data.nodes[meNodeIndex] = {
+            ...data.nodes[meNodeIndex],
+            name: `${userData.firstName} ${userData.lastName}`,
+            info: {
+              major: userData.major,
+              experience: userData.experience
+            }
+          };
+        }
+      } else {
+        // If Guest, we must remove the "You" / "user_0" node from the data completely
+        // because the backend generates it by default.
+        data.nodes = data.nodes.filter(n => n.id !== 'user_0');
+        data.links = data.links.filter(l => l.source !== 'user_0' && l.target !== 'user_0');
+
+        // Pick a random node to center around so the graph doesn't look empty/far away
+        if (data.nodes.length > 0) {
+          const randomNode = data.nodes[Math.floor(Math.random() * data.nodes.length)];
+          // We set selectedNode which triggers the sidebar and camera focus
+          // If we just want camera focus without sidebar, we might need a different state, 
+          // but "center around" implies focus. Let's select it for now so they see *something*.
+          setSelectedNode(randomNode);
+        }
       }
+
       setGraphData(data);
-      setOnboardingStep('graph');
+
     } catch (err) {
-      console.error("Failed to load graph", err);
+      console.error("Registration/Setup failed", err);
+      // Fallback?
     }
   };
 
@@ -103,24 +76,11 @@ function App() {
   const handleSearch = useCallback(async (query) => {
     try {
       const data = await api.search(query);
-      // Restore "Me" node override if needed, or rely on backend
-      // optimizing for speed, we might want to keep the "Me" node state
-      // But for now, let's just use what backend gives + override "Me" name locally if we want
-
-      // Re-apply local user override if it gets lost (since backend sends generic user_0)
-      if (user) {
-        const meNode = data.nodes.find(n => n.id === 'user_0');
-        if (meNode) {
-          meNode.name = user.name;
-          meNode.info = { major: user.major, experience: user.experience || [] };
-        }
-      }
-
       setGraphData(data);
     } catch (err) {
       console.error("Search failed", err);
     }
-  }, [user]);
+  }, []);
 
   const handleToggleConnection = useCallback((nodeId) => {
     setGraphData(prevData => {
@@ -132,32 +92,13 @@ function App() {
       });
       return { ...prevData, nodes };
     });
-    // Update selected node if it's the one being toggled
     setSelectedNode(prev => prev?.id === nodeId ? { ...prev, isConnected: !prev.isConnected } : prev);
   }, []);
 
   // Render Logic
-  if (onboardingStep === 'auth') {
+  if (!user) {
     return (
-      <div className="w-full h-screen bg-slate-900 flex items-center justify-center">
-        <AuthGate onLogin={handleLogin} />
-      </div>
-    );
-  }
-
-  if (onboardingStep === 'profile') {
-    return (
-      <div className="w-full h-screen bg-slate-900 flex items-center justify-center">
-        <ProfileEditor onSave={handleSaveProfile} initialData={{ name: user?.email.split('@')[0] }} />
-      </div>
-    );
-  }
-
-  if (onboardingStep === 'import') {
-    return (
-      <div className="w-full h-screen bg-slate-900 flex items-center justify-center">
-        <LinkedInImport onImport={handleImport} onSkip={handleSkipImport} />
-      </div>
+      <RegistrationFlow onComplete={handleRegistrationComplete} />
     );
   }
 
@@ -192,7 +133,7 @@ function App() {
       )}
 
       <div className="absolute bottom-4 left-4 pointer-events-none opacity-50">
-        <h1 className="text-xl font-bold tracking-tighter">Goal<span className="text-blue-500">Graph</span></h1>
+        <h1 className="text-xl font-bold tracking-tighter">Mc<span className="text-blue-500">Finder</span></h1>
         <p className="text-xs">McGill University • Hackathon Demo</p>
       </div>
     </div>

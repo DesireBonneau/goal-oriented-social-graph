@@ -15,16 +15,56 @@ Please refer to the detailed `README.md` in each directory for specific architec
 
 ## Quick Start
 
-### Prerequisites
-- **Node.js** (v22.17.0) - *Use `nvm use`*
-- **Python** (v3.12.8)
-- **MongoDB Atlas** credentials
+### 1. Prerequisites
+- **Node.js**: v22+ (The script will check this, or install via Volta).
+- **Python**: v3.12+
+- **MongoDB Atlas**: Ensure you have your connection string.
+
+### 2. Run the App (Easy Mode)
+The project includes a `run.js` script that automates environment setup, dependency installation, and startup for both frontend and backend.
+
+**Standard Start:**
+```bash
+node run.js
+```
+
+**Fresh Start (Reset & Clean):**
+If you encounter issues or want a clean slate (reinstalls all dependencies):
+```bash
+node run.js --clean
+```
+
+### Features of `run.js`:
+- **Auto-Install**: Installs `pip` and `npm` dependencies if missing.
+- **Port Cleanup**: Automatically kills processes on default ports (5000/5173).
+- **Volta Support**: Switches to Node 22 automatically if Volta is installed.
+- **Parallel Run**: Starts Flask and Vite in a single terminal.
+- **Parallel Run**: Starts Flask and Vite in a single terminal.
+
+### 3. Authentication & Bypass
+- **Login**: Use your McGill email and password.
+- **Guest Mode**: Click "Continue as Guest" on the login screen to explore the graph without an account.
+- **Registration**: Sign up with a valid McGill email if you don't have an account.
+
+### 4. Database Seeding (First Run)
+To populate the graph with visual data (mock students/connections):
+```bash
+# While backend is running (port 5000)
+curl.exe -X POST http://localhost:5000/api/seed
+```
+*Note: This creates ~40 users in your MongoDB.*
+
+---
+
+## Manual Setup (Alternative)
+
+If you prefer to run services manually:
 
 ### 1. Setup Backend
 ```bash
 cd backend
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 # Configure .env (See backend/README.md)

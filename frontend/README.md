@@ -2,11 +2,12 @@
 
 ## Overview
 This is a **React + Vite** application styled with **Tailwind CSS**. It serves as the user interface for the Goal-Oriented Social Graph.
+It includes **User Authentication**, **Guest Bypass**, and **Resume Parsing** features.
 
 ## Structure
 - `src/components/`: Reusable UI components.
     - `Graph/`: 2D/3D Graph visualization logic (`react-force-graph`).
-    - `Onboarding/`: Auth and Data Import flows.
+    - `Onboarding/`: Auth (Login/Register/Guest) and Data Import flows.
     - `UI/`: Generic atoms (Buttons, SearchBars).
 - `src/data/`: Mock data generators (legacy/fallback).
 - `src/services/`: API clients (`api.js`).

@@ -60,7 +60,14 @@ export default function Sidebar({ node, onClose, onToggleConnection }) {
                     <ul className="space-y-2">
                         {node.info.experience.map((exp, i) => (
                             <li key={i} className="text-sm text-slate-300 bg-slate-800 p-2 rounded border border-slate-700/50">
-                                {exp}
+                                {typeof exp === 'string' ? (
+                                    exp
+                                ) : (
+                                    <div className="flex flex-col">
+                                        <span className="font-medium text-slate-200">{exp.position}</span>
+                                        <span className="text-xs text-slate-400">{exp.company} • {exp.dates}</span>
+                                    </div>
+                                )}
                             </li>
                         ))}
                     </ul>
