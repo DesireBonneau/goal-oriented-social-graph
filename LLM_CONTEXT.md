@@ -1,6 +1,6 @@
 # Project Context & AI Guidelines
 
-## 🌟 Vision: Goal-Oriented Social Graph
+## Vision: Goal-Oriented Social Graph
 This project is a social networking platform designed for university students (initially McGill). Unlike traditional networks (Facebook/LinkedIn) that connect based on *who you know*, this platform connects students based on **shared goals** and **academic paths**.
 
 **Key Value Proposition:**
@@ -8,7 +8,7 @@ This project is a social networking platform designed for university students (i
 - "I want to pass COMP 250" -> Connects with study buddies.
 - Visualized as an interactive 2D/3D Graph.
 
-## 📚 Documentation Index
+## Documentation Index
 Use these files as your primary source of truth for specific domains.
 
 | Domain | Documentation | AI Context & Patterns |
@@ -17,7 +17,7 @@ Use these files as your primary source of truth for specific domains.
 | **Backend** | [README](./backend/README.md) | [**LLM_CONTEXT.md**](./backend/LLM_CONTEXT.md) |
 | **Roadmap** | [ROADMAP.md](./ROADMAP.md) | -- |
 
-## 🤖 Directives for AI Agents
+## Directives for AI Agents
 **CRITICAL**: As an AI contributor, you are responsible for maintaining the documentation.
 
 1.  **Schema Changes**: If you modify the MongoDB schema (e.g., adding a field to `users`), you **MUST** update `backend/LLM_CONTEXT.md` to reflect the new structure.
