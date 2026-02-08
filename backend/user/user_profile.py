@@ -49,7 +49,7 @@ class Experience:
     position: str
     company: str
     dates: str
-    location: str
+    location: Dict[str, str] = field(default_factory=lambda: {"city": "", "country": ""})
     industries: List[str] = field(default_factory=list)
 
     def update_industries(self) -> None:
@@ -109,7 +109,7 @@ class UserProfile:
             "experience": [exp.to_dict() for exp in self.experience],
             "socials": self.socials,
             "friends": self.friends,
-            "connectionStrength": self.connectionStrength,
+            "connectionStrength": self.connectionStrength, # that should be a dictionary in order of top to lowest
             "preferred_work_place": self.preferred_work_place,
         }
 
