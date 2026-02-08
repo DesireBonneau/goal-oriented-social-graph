@@ -76,6 +76,11 @@ function App() {
 
   const handleSearch = useCallback(async (query) => {
     try {
+      if (!query || query.trim() === "") {
+        const data = await api.getGraph();
+        setGraphData(data);
+        return;
+      }
       const data = await api.search(query);
       setGraphData(data);
     } catch (err) {

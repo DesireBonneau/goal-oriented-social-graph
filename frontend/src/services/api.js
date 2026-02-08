@@ -41,6 +41,22 @@ export const api = {
     },
 
     /**
+     * Get search suggestions
+     * @param {string} query
+     * @returns {Promise<Array>}
+     */
+    getSuggestions: async (query) => {
+        try {
+            const response = await fetch(`${API_URL}/search/suggestions?query=${encodeURIComponent(query)}`);
+            if (!response.ok) throw new Error('Failed to fetch suggestions');
+            return await response.json();
+        } catch (error) {
+            // console.error("API Error:", error); // Suppress log for typing
+            return [];
+        }
+    },
+
+    /**
      * Create a new user
      * @param {object} userData 
      */

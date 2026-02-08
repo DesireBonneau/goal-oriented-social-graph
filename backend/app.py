@@ -6,6 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from db import get_db, check_connection
 from algorithm import calculate_similarity, generate_mock_graph_data
 from services.cv_service import extract_cv_data
+from services.search_service import perform_search, get_suggestions
 
 # Load environment variables
 # Load environment variables
@@ -267,14 +268,20 @@ def search_graph():
         except:
             pass  # Unauthenticated search is OK, just not personalized
     
-    # Get current graph state (or re-generate/fetch)
-    # TODO: Use real graph data from DB instead of mock
-    graph = generate_mock_graph_data()
+    # Run search via independent service
+    # This returns {"nodes": [...], "links": []} based on real DB data
+    # Fallback to Gemini happens inside the service if needed
+    search_results = perform_search(query, db, current_user_id)
     
-    # Run algorithm with current user context
-    updated_graph = calculate_similarity(query, graph, current_user_id)
+    return jsonify(search_results)
+
+@app.route('/api/search/suggestions', methods=['GET'])
+def search_suggestions():
+    db = get_db()
+    query = request.args.get('query', '')
     
-    return jsonify(updated_graph)
+    suggestions = get_suggestions(query, db)
+    return jsonify(suggestions)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
