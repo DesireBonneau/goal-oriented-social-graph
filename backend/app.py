@@ -11,8 +11,11 @@ load_dotenv()
 app = Flask(__name__)
 
 # Configure CORS
-# Allow requests from the frontend URL specified in env (default to Vite's localhost)
-client_url = os.environ.get('CLIENT_URL', 'http://localhost:5173')
+# Allow requests from the frontend URL specified in env
+client_url = os.environ.get('CLIENT_URL')
+if not client_url:
+    raise ValueError("No CLIENT_URL found in environment variables. Please check your .env file.")
+
 CORS(app, resources={r"/api/*": {"origins": client_url}})
 
 @app.route('/health', methods=['GET'])
