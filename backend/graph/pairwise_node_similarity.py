@@ -42,6 +42,22 @@ def _normalize_str(value: Optional[str]) -> Optional[str]:
     return value if value else None
 
 
+def _normalize_major_minor(value: Optional[str]) -> Optional[str]:
+    """
+    Normalizes majors/minors by removing degree-level descriptors.
+    """
+    normalized = _normalize_str(value)
+    if normalized is None:
+        return None
+
+    remove_tokens = {"honours", "honors", "hons", "with honors"}
+
+    parts = [p for p in normalized.replace("/", " ").replace("-", " ").split() if p]
+    parts = [p for p in parts if p not in remove_tokens]
+    cleaned = " ".join(parts).strip()
+    return cleaned if cleaned else None
+
+
 def _exact_match(a: Optional[str], b: Optional[str]) -> float:
     a_norm = _normalize_str(a)
     b_norm = _normalize_str(b)
@@ -243,10 +259,10 @@ def pairwise_similarity_from_mongo_docs(
     sims.append(_exact_match(u.get("faculty"), v.get("faculty")))
     ws.append(w_faculty)
 
-    sims.append(_exact_match(u.get("major"), v.get("major")))
+    sims.append(_exact_match(_normalize_major_minor(u.get("major")), _normalize_major_minor(v.get("major"))))
     ws.append(w_major)
 
-    sims.append(_exact_match(u.get("minor"), v.get("minor")))
+    sims.append(_exact_match(_normalize_major_minor(u.get("minor")), _normalize_major_minor(v.get("minor"))))
     ws.append(w_minor)
 
     sims.append(_exact_match(u.get("preferred_work_country"), v.get("preferred_work_country")))
