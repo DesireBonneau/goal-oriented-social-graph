@@ -28,11 +28,12 @@
 - [x] **Bug: Sidebar Cannot Close**
   - ~~**Issue**: The close button in the sidebar appears non-functional.~~
   - **Fixed**: Added `z-30` class to sidebar container in `Sidebar.jsx` to ensure it renders above graph canvas.
-- [ ] **UX: Smooth 2D/3D Transition**
-  - **Issue**: Switching views resets the graph layout and camera, causing disorientation.
-  - **Fix**: 
-    - Maintain node positions (`fx`, `fy`, `z`) across re-renders.
-    - Animate camera to a neutral position before switching.
+- [x] **UX: Smooth 2D/3D Transition**
+  - ~~**Issue**: Switching views resets the graph layout and camera, causing disorientation.~~
+  - **Fixed**: Added position preservation in `GraphViz.jsx`:
+    - Store node positions (`x`, `y`, `z`) in a ref on each engine tick
+    - Restore and temporarily fix (`fx`, `fy`, `fz`) positions during transitions
+    - Use `cooldownTicks` and `warmupTicks` to prevent simulation from scattering nodes
 - [ ] **Bug: Search Destroys Graph Layout**
   - **Issue**: Filtering nodes causes them to reset positions and lose structure ("equally spaced").
   - **Cause**: `simulateSearch` in `mockData.js` returns new object references. `react-force-graph` treats them as new nodes and resets the physics simulation.
