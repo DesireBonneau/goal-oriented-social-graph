@@ -23,3 +23,19 @@ def get_db():
         return client['social_graph_test']
     
     return client['social_graph_prod']
+
+def check_connection():
+    """
+    Checks the MongoDB connection.
+    Returns: (bool, str) - (success, message)
+    """
+    try:
+        mongo_uri = os.environ.get('MONGO_URI')
+        if not mongo_uri:
+            return False, "MONGO_URI not found"
+            
+        client = MongoClient(mongo_uri, server_api=ServerApi('1'), serverSelectionTimeoutMS=2000)
+        client.admin.command('ping')
+        return True, "Connected to MongoDB"
+    except Exception as e:
+        return False, str(e)

@@ -80,13 +80,37 @@
    ```
    App will be available at `http://localhost:5173`.
 
+## Health Checks
+
+You can verify the backend status and database connection by hitting the health endpoint:
+
+```bash
+curl http://localhost:5000/health
+```
+
+Expected response:
+```json
+{
+  "database": {
+    "connected": true,
+    "message": "Connected to MongoDB"
+  },
+  "status": "healthy"
+}
+```
+
 ## Testing
 
-### Backend
-Make sure your `venv` is active.
-```bash
-cd backend
-export FLASK_ENV=testing
-pytest
-```
-*Note: This connects to the `social_graph_test` database.*
+### Backend Tests
+The backend uses `pytest` for automated testing.
+1. Ensure your virtual environment is active:
+   ```bash
+   source .venv/bin/activate
+   ```
+2. Run the tests:
+   ```bash
+   cd backend
+   export FLASK_ENV=testing
+   pytest
+   ```
+   *Note: This connects to the `social_graph_test` database to avoid messing with production data.*

@@ -2,7 +2,7 @@ import os
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from dotenv import load_dotenv
-from db import get_db
+from db import get_db, check_connection
 from algorithm import calculate_similarity, generate_mock_graph_data
 
 # Load environment variables
@@ -17,7 +17,16 @@ CORS(app, resources={r"/api/*": {"origins": client_url}})
 
 @app.route('/health', methods=['GET'])
 def health_check():
-    return jsonify({"status": "healthy"}), 200
+    db_status, db_message = check_connection()
+    status_code = 200 if db_status else 500
+    
+    return jsonify({
+        "status": "healthy" if db_status else "unhealthy",
+        "database": {
+            "connected": db_status,
+            "message": db_message
+        }
+    }), status_code
 
 @app.route('/api/user', methods=['POST'])
 def create_user():
