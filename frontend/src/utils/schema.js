@@ -9,6 +9,7 @@
  * @property {number} val - Visual size (mapped to score)
  * @property {number} score - 0.0 to 1.0 (Relevance)
  * @property {boolean} isFuzzy - true if 3rd+ degree connection
+ * @property {boolean} isConnected - true if user has added as friend
  * @property {string} [img]
  * @property {string} [summary]
  */

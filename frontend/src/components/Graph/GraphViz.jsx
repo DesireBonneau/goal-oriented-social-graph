@@ -3,6 +3,7 @@ import ForceGraph2D from 'react-force-graph-2d';
 import ForceGraph3D from 'react-force-graph-3d';
 import * as THREE from 'three';
 import SpriteText from 'three-spritetext';
+import { graphConfig, getNodeColor, shouldShowLabel, shouldShowAura } from '../../config/graphConfig';
 
 /**
  * @param {Object} props
@@ -86,13 +87,13 @@ export default function GraphViz({ data, onNodeClick, focusNode, is3D = false })
     useEffect(() => {
         if (focusNode && fgRef.current) {
             if (is3D) {
-                // 3D Camera Logic - increased distance to avoid over-zooming
-                const distance = 120;
+                // 3D Camera Logic
+                const distance = graphConfig.camera.focusDistance;
                 const distRatio = 1 + distance / Math.hypot(focusNode.x, focusNode.y, focusNode.z);
                 fgRef.current.cameraPosition(
                     { x: focusNode.x * distRatio, y: focusNode.y * distRatio, z: focusNode.z * distRatio },
                     { x: focusNode.x, y: focusNode.y, z: focusNode.z },
-                    2000
+                    graphConfig.camera.animationDuration * 4
                 );
             } else {
                 // 2D Camera Logic
@@ -134,42 +135,43 @@ export default function GraphViz({ data, onNodeClick, focusNode, is3D = false })
     useEffect(() => {
         if (fgRef.current && data.nodes?.length > 0) {
             const timer = setTimeout(() => {
+                const { initialZoom3D, initialZoom2D, animationDuration } = graphConfig.camera;
                 if (is3D) {
-                    // 3D: Move camera closer to the graph center
-                    fgRef.current.cameraPosition({ x: 0, y: 0, z: 150 }, { x: 0, y: 0, z: 0 }, 500);
+                    fgRef.current.cameraPosition({ x: 0, y: 0, z: initialZoom3D }, { x: 0, y: 0, z: 0 }, animationDuration);
                 } else {
-                    // 2D: Set a comfortable initial zoom
-                    fgRef.current.zoom(3.5, 500);
-                    fgRef.current.centerAt(0, 0, 500);
+                    fgRef.current.zoom(initialZoom2D, animationDuration);
+                    fgRef.current.centerAt(0, 0, animationDuration);
                 }
             }, 300);
             return () => clearTimeout(timer);
         }
-    }, [data.nodes?.length, is3D]); // Run when nodes load or view mode changes
+    }, [data.nodes?.length, is3D]);
 
     // --- 3D Rendering Logic ---
     const nodeThreeObject = useCallback((node) => {
         const group = new THREE.Group();
+        const color = getNodeColor(node);
+        const { sizing, colors } = graphConfig;
 
-        let color = '#4B5563'; // Gray
-        if (node.id === 'user_0') color = '#10B981'; // Emerald
-        else if (node.score > 0.6) color = '#60A5FA'; // Blue
-
-        const radius = Math.sqrt(node.val) * 2;
+        const radius = Math.sqrt(node.val) * sizing.baseRadius3D;
         const geometry = new THREE.SphereGeometry(radius);
         const material = new THREE.MeshLambertMaterial({ color, transparent: true, opacity: 0.9 });
         group.add(new THREE.Mesh(geometry, material));
 
-        if (node.score > 0.6) {
+        if (shouldShowAura(node)) {
             const aura = new THREE.Mesh(
-                new THREE.SphereGeometry(radius * 2.5),
-                new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: node.score * 0.15, depthWrite: false })
+                new THREE.SphereGeometry(radius * sizing.auraMultiplier),
+                new THREE.MeshBasicMaterial({
+                    color: colors.aura,
+                    transparent: true,
+                    opacity: node.score * 0.15,
+                    depthWrite: false
+                })
             );
             group.add(aura);
         }
 
-        // when to show names in 3d view
-        if (node.id === 'user_0' || node.score >= 0.8) {
+        if (shouldShowLabel(node)) {
             const sprite = new SpriteText(node.name);
             sprite.color = 'white';
             sprite.textHeight = 3;
@@ -181,9 +183,12 @@ export default function GraphViz({ data, onNodeClick, focusNode, is3D = false })
 
     // --- 2D Rendering Logic ---
     const nodeCanvasObject = useCallback((node, ctx, globalScale) => {
+        const { sizing, colors } = graphConfig;
+        const radius = Math.sqrt(node.val) * sizing.baseRadius2D;
+
         // Aura
-        if (node.score > 0.6) {
-            const auraRadius = Math.sqrt(node.val) * 4;
+        if (shouldShowAura(node)) {
+            const auraRadius = radius * (sizing.auraMultiplier + 1);
             ctx.beginPath();
             ctx.arc(node.x, node.y, auraRadius, 0, 2 * Math.PI, false);
             ctx.fillStyle = `rgba(59, 130, 246, ${node.score * 0.3})`;
@@ -191,18 +196,13 @@ export default function GraphViz({ data, onNodeClick, focusNode, is3D = false })
         }
 
         // Node
-        const radius = Math.sqrt(node.val);
         ctx.beginPath();
         ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
-
-        if (node.id === 'user_0') ctx.fillStyle = '#10B981';
-        else if (node.score > 0.6) ctx.fillStyle = '#60A5FA';
-        else ctx.fillStyle = '#4B5563';
-
+        ctx.fillStyle = getNodeColor(node);
         ctx.fill();
 
         // Label
-        if (globalScale > 2 || node.score > 0.8) {
+        if (shouldShowLabel(node, globalScale)) {
             const fontSize = 12 / globalScale;
             ctx.font = `${fontSize}px Sans-Serif`;
             ctx.textAlign = 'center';
