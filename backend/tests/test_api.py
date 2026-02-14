@@ -1,7 +1,7 @@
 import pytest
 import os
-from app import app
-from db import get_db
+from backend.app import app
+from backend.core.db import get_db
 
 @pytest.fixture
 def client():

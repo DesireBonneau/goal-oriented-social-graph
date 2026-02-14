@@ -1,11 +1,10 @@
 from __future__ import annotations
-
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Optional, Dict, Any, List
 import math
 import os
-
+from pymongo import MongoClient
 from industry_classifier import get_industry
 
 
@@ -25,30 +24,13 @@ def _parse_date(value: Optional[str]) -> Optional[date]:
     return None
 
 
-def _months_between(a: date, b: date) -> int:
-    return (b.year - a.year) * 12 + (b.month - a.month)
-
-
-# For now, the decay is of 5 years
-def _decay_score(end_date: Optional[date], *, half_life_months: int = 60) -> float:
-    """
-    Exponential decay: score = 0.5^(months / half_life_months).
-    If no end_date is provided, treat as current (score = 1.0).
-    """
-    if end_date is None:
-        return 1.0
-    months = max(0, _months_between(end_date, date.today()))
-    return math.pow(0.5, months / max(1, half_life_months))
-
-
-
-
 # Dataclass for the internships and work experiences
 @dataclass
 class Experience:
     position: str
     company: str
-    dates: str
+    start_date: Optional[str]
+    end_date: Optional[str]
     location: str
     industries: List[str] = field(default_factory=list)
 
@@ -63,7 +45,8 @@ class Experience:
         return {
             "position": self.position,
             "company": self.company,
-            "dates": self.dates,
+            "start_date": self.start_date,
+            "end_date": self.end_date,
             "location": self.location,
             "industries": self.industries,
         }
@@ -85,7 +68,7 @@ class UserProfile:
     friends: List[str] = field(default_factory=list)
     # Top 50 for Computed Similarity Cache (Implicit Graph)
     connectionStrength: List[Dict[str, Any]] = field(default_factory=list)
-    preferred_work_place: Optional[str] = None
+    preferred_work_place: Optional[str] = None # A location you would prefer to work at
 
 
     def update_industries(self) -> None:
@@ -107,7 +90,6 @@ class UserProfile:
             "minor": self.minor,
             "clubs": self.clubs,
             "experience": [exp.to_dict() for exp in self.experience],
-            "socials": self.socials,
             "friends": self.friends,
             "connectionStrength": self.connectionStrength, # that should be a dictionary in order of top to lowest
             "preferred_work_place": self.preferred_work_place,
@@ -144,8 +126,6 @@ class UserProfile:
           MONGO_DB_NAME=<your-db> (optional if DB is in URI)
           MONGO_COLLECTION_NAME=<your-collection>
         """
-        from pymongo import MongoClient  # local import to avoid hard dependency at import time
-
         env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
         _load_env_file(env_path)
 

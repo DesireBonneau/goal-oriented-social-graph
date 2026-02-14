@@ -3,8 +3,8 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
-from db import get_db, check_connection
-from algorithm import calculate_similarity, generate_mock_graph_data
+from core.db import get_db, check_connection
+
 from graph import compute_user_connections, rebuild_all_connections
 from services.cv_service import extract_cv_data
 from services.search_service import perform_search, get_suggestions
@@ -38,7 +38,7 @@ def health_check():
 
 import secrets
 from functools import wraps
-from seed import seed_database
+
 
 # Helper for Token Auth
 def require_auth(f):
@@ -62,13 +62,7 @@ def require_auth(f):
         return f(*args, **kwargs)
     return decorated
 
-@app.route('/api/seed', methods=['POST'])
-def seed_db_route():
-    try:
-        result = seed_database()
-        return jsonify(result), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+
 
 @app.route('/api/user', methods=['POST'])
 def create_user():
