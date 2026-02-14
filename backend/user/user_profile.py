@@ -5,7 +5,7 @@ from typing import Optional, Dict, Any, List
 import math
 import os
 from pymongo import MongoClient
-from industry_classifier import get_industry
+from .industry_classifier import get_industry
 
 
 def _parse_date(value: Optional[str]) -> Optional[date]:
