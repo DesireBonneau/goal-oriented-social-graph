@@ -7,3 +7,4 @@ dnspython==2.6.1
 google-genai
 PyPDF2
 werkzeug==3.0.1
+requests==2.31.0

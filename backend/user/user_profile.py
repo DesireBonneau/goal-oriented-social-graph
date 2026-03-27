@@ -4,6 +4,8 @@ from datetime import date, datetime
 from typing import Optional, Dict, Any, List
 import math
 import os
+import secrets
+from werkzeug.security import generate_password_hash
 from pymongo import MongoClient
 from .industry_classifier import get_industry
 
@@ -23,8 +25,7 @@ def _parse_date(value: Optional[str]) -> Optional[date]:
             continue
     return None
 
-
-# Dataclass for the internships and work experiences
+# Dataclass for the internships and/or work experiences
 @dataclass
 class Experience:
     position: str
@@ -69,6 +70,56 @@ class UserProfile:
     # Top 50 for Computed Similarity Cache (Implicit Graph)
     connectionStrength: List[Dict[str, Any]] = field(default_factory=list)
     preferred_work_place: Optional[str] = None # A location you would prefer to work at
+    password: Optional[str] = None # Hashed password
+    token: Optional[str] = None # Auth token
+
+    @classmethod
+    def create(cls, data: Dict[str, Any]) -> UserProfile:
+        """
+        Factory method to create a new UserProfile.
+        Validates email, hashes password, generates token, and saves to DB.
+        """
+        email = data.get('email', '').strip()
+        if not email.endswith('@mail.mcgill.ca') and not email.endswith('@mcgill.ca'):
+             raise ValueError("Must be a McGill email")
+
+        password_raw = data.get('password')
+        password_hash = generate_password_hash(password_raw) if password_raw else None
+        
+        token = secrets.token_hex(16)
+        
+        # Safe cast for graduationYear
+        grad_year = data.get('graduationYear')
+        if grad_year:
+            try:
+                grad_year = int(grad_year)
+            except (ValueError, TypeError):
+                grad_year = 0
+        else:
+             grad_year = 0
+
+        # Create instance
+        user = cls(
+            email=email,
+            first_name=data.get('firstName', ''),
+            last_name=data.get('lastName', ''),
+            graduation_year=grad_year,
+            faculty=data.get('faculty', ''),
+            major=data.get('major', ''),
+            minor=data.get('minor'),
+            clubs=data.get('clubs', []),
+            experience=[Experience(**exp) if isinstance(exp, dict) else exp for exp in data.get('experience', [])],
+            socials=data.get('socials', {"linkedinUrl": "", "other": []}),
+            friends=[],
+            connectionStrength=[],
+            password=password_hash,
+            token=token,
+            preferred_work_place=data.get('preferred_work_place')
+        )
+        
+        # Save to DB
+        user.add_to_mongodb()
+        return user
 
 
     def update_industries(self) -> None:
@@ -90,9 +141,29 @@ class UserProfile:
             "minor": self.minor,
             "clubs": self.clubs,
             "experience": [exp.to_dict() for exp in self.experience],
-            "friends": self.friends,
             "connectionStrength": self.connectionStrength, # that should be a dictionary in order of top to lowest
             "preferred_work_place": self.preferred_work_place,
+            "password": self.password,
+            "token": self.token,
+        }
+
+    def to_api_response(self) -> Dict[str, Any]:
+        """
+        Returns the dictionary representation for API responses (excluding password).
+        """
+        return {
+            "email": self.email,
+            "firstName": self.first_name,
+            "lastName": self.last_name,
+            "graduationYear": self.graduation_year,
+            "faculty": self.faculty,
+            "major": self.major,
+            "minor": self.minor,
+            "clubs": self.clubs,
+            "experience": [exp.to_dict() for exp in self.experience],
+            "socials": self.socials,
+            "token": self.token,
+            # Add other fields as needed by frontend
         }
 
 

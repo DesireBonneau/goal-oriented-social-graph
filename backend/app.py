@@ -9,7 +9,8 @@ from graph import compute_user_connections, rebuild_all_connections
 from services.cv_service import extract_cv_data
 from services.search_service import perform_search, get_suggestions
 
-# Load environment variables
+from user.user_profile import UserProfile
+
 # Load environment variables
 load_dotenv()
 
@@ -73,52 +74,41 @@ def create_user():
     if not data or 'email' not in data:
         return jsonify({"error": "Email is required"}), 400
     
-    # Extended validation could go here, but we trust the schema for now
-    # The frontend is responsible for sending the correct structure
-    # We just ensure email is unique and valid (backend check)
-    if not data['email'].endswith('@mail.mcgill.ca') and not data['email'].endswith('@mcgill.ca'):
-         return jsonify({"error": "Must be a McGill email"}), 400
-        
+    # Check for existing user first
     users = db.users
     existing = users.find_one({"email": data['email']})
     
     if existing:
         return jsonify({"message": "User already exists", "id": str(existing['_id'])}), 200
-        
-    # Hash password if provided
-    if 'password' in data:
-        data['password'] = generate_password_hash(data['password'])
 
-    # Generate Token
-    token = secrets.token_hex(16)
-    data['token'] = token
-
-    result = users.insert_one(data)
-    user_id = str(result.inserted_id)
-    
-    # Compute connections to other users using smart similarity
     try:
-        connections = compute_user_connections(db, user_id)
+        # Create user via UserProfile class
+        user_obj = UserProfile.create(data)
+        
+        # Compute connections (using the inserted ID)
+        # We need to fetch the ID. UserProfile.create inserts but doesn't store _id on the object unless we updated it.
+        # But we can query by email or modify create to return ID.
+        # For now, let's query.
+        inserted_user = users.find_one({"email": user_obj.email})
+        if not inserted_user:
+             raise Exception("User creation failed - could not retrieve new user")
+        user_id = str(inserted_user['_id'])
+        
+        try:
+            connections = compute_user_connections(db, user_id)
+        except Exception as e:
+            print(f"Warning: Failed to compute connections for new user: {e}")
+            connections = []
+            
+        # Return standard response
+        response = user_obj.to_api_response()
+        response['id'] = user_id
+        return jsonify({"message": "User created", **response}), 201
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
-        print(f"Warning: Failed to compute connections for new user: {e}")
-        connections = []
-    
-    # Return full user object with 'id' (not '_id') for frontend compatibility
-    user_response = {
-        "id": user_id,
-        "email": data.get('email'),
-        "firstName": data.get('firstName'),
-        "lastName": data.get('lastName'),
-        "major": data.get('major'),
-        "minor": data.get('minor'),
-        "faculty": data.get('faculty'),
-        "graduationYear": data.get('graduationYear'),
-        "clubs": data.get('clubs', []),
-        "experience": data.get('experience', []),
-        "socials": data.get('socials', {}),
-        "token": token
-    }
-    return jsonify({"message": "User created", **user_response}), 201
+        return jsonify({"error": f"Failed to create user: {str(e)}"}), 500
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -178,6 +168,8 @@ def rebuild_graph():
 def update_user():
     db = get_db()
     data = request.json
+    if not data:
+        return jsonify({"error": "Invalid JSON"}), 400
     email = data.get('email')
     
     if not email:
@@ -187,6 +179,8 @@ def update_user():
     
     # Security check: Ensure token matches the user being updated
     auth_header = request.headers.get('Authorization')
+    if not auth_header:
+         return jsonify({"error": "Missing Authorization Header"}), 401
     token = auth_header.split(" ")[1]
     requester = users.find_one({"token": token})
     
@@ -210,15 +204,14 @@ def extract_cv():
     if file.filename == '':
         return jsonify({"error": "No selected file"}), 400
         
-    if file:
-        try:
-            # Pass the file stream directly to the service
-            extracted_data = extract_cv_data(file.stream)
-            if "error" in extracted_data:
-                return jsonify(extracted_data), 500
-            return jsonify(extracted_data), 200
-        except Exception as e:
-             return jsonify({"error": str(e)}), 500
+    try:
+        # Pass the file stream directly to the service
+        extracted_data = extract_cv_data(file.stream)
+        if "error" in extracted_data:
+            return jsonify(extracted_data), 500
+        return jsonify(extracted_data), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/graph', methods=['GET'])
 def get_graph():
@@ -267,6 +260,9 @@ def get_graph():
 def search_graph():
     db = get_db()
     data = request.json
+    if not data:
+         # Handle empty body case
+         data = {}
     query = data.get('query', '')
     
     # Identify current user for personalized relevance scoring
