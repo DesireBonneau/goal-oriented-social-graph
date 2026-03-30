@@ -7,7 +7,8 @@ from core.db import get_db, check_connection
 
 from graph import compute_user_connections, rebuild_all_connections
 from services.cv_service import extract_cv_data
-from services.search_service import perform_search, get_suggestions
+from services.search_service import perform_search, get_suggestions, get_profile_similarity
+from core.db_schema import setup_db
 
 from user.user_profile import UserProfile
 
@@ -23,6 +24,14 @@ if not client_url:
     raise ValueError("No CLIENT_URL found in environment variables. Please check your .env file.")
 
 CORS(app, resources={r"/api/*": {"origins": client_url}})
+
+# Apply MongoDB schema validation and indexes on startup
+try:
+    _startup_db = get_db()
+    setup_db(_startup_db)
+except Exception as _e:
+    import logging
+    logging.getLogger(__name__).warning(f"DB schema setup failed (non-fatal): {_e}")
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -291,6 +300,20 @@ def search_suggestions():
     
     suggestions = get_suggestions(query, db)
     return jsonify(suggestions)
+
+@app.route('/api/similarity', methods=['GET'])
+def get_similarity():
+    """Compute pairwise similarity score and breakdown between two user IDs."""
+    db = get_db()
+    user_a = request.args.get('user_a')
+    user_b = request.args.get('user_b')
+
+    if not user_a or not user_b:
+        return jsonify({"error": "user_a and user_b query params required"}), 400
+
+    result = get_profile_similarity(user_a, user_b, db)
+    return jsonify(result)
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

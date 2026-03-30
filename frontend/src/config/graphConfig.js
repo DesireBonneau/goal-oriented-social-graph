@@ -11,6 +11,12 @@ export const graphConfig = {
         highScore: '#60A5FA',   // Blue - high relevance nodes
         default: '#4B5563',     // Gray - everyone else
         aura: '#3b82f6',        // Blue glow for high-score nodes
+        // Selection / comparison states
+        selected: '#F472B6',    // Pink - the profile currently focused
+        selfHighlighted: '#34D399', // Brighter emerald when logged-in user is part of comparison
+        comparison: '#FB923C',  // Orange - the second node in a comparison pair
+        highlightedEdge: '#F472B6', // Pink - edge between two compared profiles
+        virtualEdge: '#FB923C',    // Orange dashed - virtual edge drawn for comparison
     },
 
     // Score thresholds for visual effects
@@ -57,6 +63,11 @@ export const graphConfig = {
     // User identification (the logged-in user's node ID)
     // Set dynamically via setCurrentUserId() after login
     selfId: null,
+
+    // Selection state: nodes currently being compared
+    // Set dynamically via setSelectionState()
+    selectedNodeId: null,    // Primary selected node (clicked from graph or search)
+    comparisonNodeId: null,  // Second node in comparison mode
 };
 
 /**
@@ -66,6 +77,16 @@ export const graphConfig = {
  */
 export function setCurrentUserId(id) {
     graphConfig.selfId = id;
+}
+
+/**
+ * Set the active selection / comparison state.
+ * @param {string|null} selectedId - Primary selected node ID
+ * @param {string|null} comparisonId - Comparison node ID (optional)
+ */
+export function setSelectionState(selectedId, comparisonId = null) {
+    graphConfig.selectedNodeId = selectedId;
+    graphConfig.comparisonNodeId = comparisonId;
 }
 
 /**
@@ -85,6 +106,64 @@ export function getNodeColor(node) {
         return graphConfig.colors.highScore;
     }
     return graphConfig.colors.default;
+}
+
+/**
+ * Get node color incorporating selection/comparison state.
+ * Priority: comparisonNode > selectedNode > selfHighlighted (when in comparison) > base color
+ * @param {Object} node
+ * @returns {string} Hex color string
+ */
+export function getNodeColorWithState(node) {
+    const { selectedNodeId, comparisonNodeId, selfId, colors } = graphConfig;
+    const isInComparisonMode = selectedNodeId !== null || comparisonNodeId !== null;
+
+    if (comparisonNodeId && node.id === comparisonNodeId) {
+        return colors.comparison;
+    }
+    if (selectedNodeId && node.id === selectedNodeId) {
+        return colors.selected;
+    }
+    // Brighten self node when it's part of an active comparison (logged-in vs target)
+    if (selfId && node.id === selfId && isInComparisonMode) {
+        return colors.selfHighlighted;
+    }
+    return getNodeColor(node);
+}
+
+/**
+ * Get the color for a link based on selection state.
+ * Returns highlighted colour for the edge between selected/compared nodes.
+ * @param {Object} link - Link object with source.id / target.id
+ * @param {boolean} isVirtual - Whether this is a virtual comparison edge
+ * @returns {{ color: string, width: number, dashed: boolean }}
+ */
+export function getLinkStyle(link, isVirtual = false) {
+    const { selectedNodeId, comparisonNodeId, selfId, colors } = graphConfig;
+    const sourceId = link.source?.id ?? link.source;
+    const targetId = link.target?.id ?? link.target;
+
+    if (isVirtual) {
+        return { color: colors.virtualEdge, width: 2, dashed: true };
+    }
+
+    // A link is highlighted if it directly connects (selected ↔ self) or (selected ↔ comparison)
+    const pairs = [
+        [selectedNodeId, selfId],
+        [selectedNodeId, comparisonNodeId],
+        [comparisonNodeId, selfId],
+    ];
+    const isHighlighted = pairs.some(([a, b]) =>
+        a && b && (
+            (sourceId === a && targetId === b) ||
+            (sourceId === b && targetId === a)
+        )
+    );
+
+    if (isHighlighted) {
+        return { color: colors.highlightedEdge, width: 3, dashed: false };
+    }
+    return { color: 'rgba(255,255,255,0.2)', width: 0.5, dashed: link.type === 'fuzzy' };
 }
 
 /**

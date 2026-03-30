@@ -166,6 +166,23 @@ export const api = {
             console.error("API Error:", error);
             throw error;
         }
+    },
+
+    /**
+     * Get pairwise similarity score + breakdown between two users
+     * @param {string} userIdA
+     * @param {string} userIdB
+     * @returns {Promise<{score: number, breakdown: Array}>}
+     */
+    getSimilarity: async (userIdA, userIdB) => {
+        try {
+            const response = await fetch(`${API_URL}/similarity?user_a=${encodeURIComponent(userIdA)}&user_b=${encodeURIComponent(userIdB)}`);
+            if (!response.ok) throw new Error('Failed to fetch similarity');
+            return await response.json();
+        } catch (error) {
+            console.error("API Error:", error);
+            return { score: 0, breakdown: [] };
+        }
     }
 };
 

@@ -37,14 +37,15 @@ def normalize_user_for_similarity(user_doc: Dict[str, Any]) -> Dict[str, Any]:
         # Classify as internship or job based on position
         is_internship = any(keyword in position for keyword in ["intern", "co-op", "fellow", "summer"])
         
-        # Build experience entry matching the expected schema
+        # Build experience entry - read start_date/end_date directly from seeder format
         exp_entry = {
             "company": exp.get("company"),
-            "industry": exp.get("industry"),  # May be None in current data
+            "industry": exp.get("industry"),
             "location": exp.get("location"),
             "country": exp.get("country"),
-            "start_date": _parse_dates_string(dates_str, "start"),
-            "end_date": _parse_dates_string(dates_str, "end"),
+            # Use start_date/end_date fields written by the seeder directly
+            "start_date": exp.get("start_date") or _parse_dates_string(exp.get("dates", ""), "start"),
+            "end_date": exp.get("end_date") or _parse_dates_string(exp.get("dates", ""), "end"),
             "duration_months": exp.get("duration_months"),
         }
         
@@ -112,8 +113,8 @@ def _parse_dates_string(dates_str: str, which: str) -> Optional[str]:
 def compute_user_connections(
     db,
     user_id: str,
-    threshold: float = 0.3,
-    high_similarity_threshold: float = 0.7,
+    threshold: float = 0.15,
+    high_similarity_threshold: float = 0.6,
 ) -> List[Dict[str, Any]]:
     """
     Compute similarity between a single user and ALL other users.
@@ -172,8 +173,8 @@ def compute_user_connections(
 
 def rebuild_all_connections(
     db,
-    threshold: float = 0.3,
-    high_similarity_threshold: float = 0.7,
+    threshold: float = 0.15,
+    high_similarity_threshold: float = 0.6,
 ) -> Dict[str, Any]:
     """
     Recalculate ALL pairwise similarities and rebuild the entire connections collection.

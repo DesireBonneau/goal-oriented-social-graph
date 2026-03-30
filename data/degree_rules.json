@@ -1,0 +1,239 @@
+{
+    "_source": "McGill University Undergraduate eCalendar 2024-2025",
+    "_notes": [
+        "Rules are per-faculty and cover undergraduate degrees only.",
+        "'No double-counting' rule applies universally: a course cannot satisfy two programs simultaneously.",
+        "Credit counts are approximate guidelines; specific department requirements may vary.",
+        "Professional faculties (Law, Medicine, Dentistry, Music) have fixed curricula — minors are rare/not applicable.",
+        "Graduate and Postdoctoral Studies students are excluded from these rules."
+    ],
+
+    "faculties": {
+
+        "Faculty of Arts": {
+            "degree": "B.A.",
+            "total_credits": 120,
+            "structure": "Multi-track: students must combine at least two program components.",
+            "majors": {
+                "min": 1,
+                "max": 2,
+                "credits_per_major": 36,
+                "notes": "A second major can substitute for the required minor. Double-majors are common."
+            },
+            "minors": {
+                "min": 0,
+                "max": 2,
+                "credits_per_minor": 18,
+                "notes": "Required if only one major is declared. Up to 2 minors allowed. At least one program must be from the Faculty of Arts (as of Fall 2025)."
+            },
+            "honours": {
+                "allowed": true,
+                "replaces_major": true,
+                "credits": 60,
+                "notes": "Honours replaces the major; a minor is still recommended."
+            },
+            "typical_combinations": [
+                "Major + Minor",
+                "Major + Major",
+                "Honours + Minor",
+                "Major + Minor + Minor"
+            ]
+        },
+
+        "Faculty of Science": {
+            "degree": "B.Sc.",
+            "total_credits": 120,
+            "structure": "Flexible: Liberal, Major, or Honours streams.",
+            "majors": {
+                "min": 1,
+                "max": 2,
+                "credits_per_major": 36,
+                "notes": "Double major is permitted but must total at least 120 credits without double-counting."
+            },
+            "minors": {
+                "min": 0,
+                "max": 2,
+                "credits_per_minor": 18,
+                "notes": "Optional for Major stream. Liberal stream requires a breadth component (18+ credits) which can be a minor."
+            },
+            "liberal_stream": {
+                "core_science_credits": 45,
+                "breadth_credits": 18,
+                "notes": "Breadth can be fulfilled by a Minor, Arts Major/Minor, or a second Core Science Component."
+            },
+            "honours": {
+                "allowed": true,
+                "replaces_major": true,
+                "credits": 60
+            },
+            "typical_combinations": [
+                "Major",
+                "Major + Minor",
+                "Major + Major",
+                "Honours",
+                "Honours + Minor",
+                "Liberal (Core Science + Breadth Minor)"
+            ]
+        },
+
+        "Faculty of Engineering": {
+            "degree": "B.Eng.",
+            "total_credits_cegep": 108,
+            "total_credits_non_cegep": 148,
+            "structure": "Professional fixed curriculum. Minors are optional add-ons that may extend degree length.",
+            "majors": {
+                "min": 1,
+                "max": 1,
+                "notes": "One engineering discipline only (e.g., Software, Electrical, Mechanical). Cannot double-major."
+            },
+            "minors": {
+                "min": 0,
+                "max": 1,
+                "credits_per_minor": 18,
+                "notes": "Optional. Adds credits to the degree. Common minors: Computer Science, Management, Biomedical Engineering."
+            },
+            "typical_combinations": [
+                "Engineering Major only",
+                "Engineering Major + Minor"
+            ]
+        },
+
+        "Desautels Faculty of Management": {
+            "degree": "B.Com.",
+            "total_credits": 120,
+            "structure": "Core business curriculum with a required major concentration in Year 3-4.",
+            "majors": {
+                "min": 1,
+                "max": 1,
+                "notes": "One major concentration required (e.g., Finance, Marketing, Accounting). Cannot double-major within Commerce."
+            },
+            "minors": {
+                "min": 0,
+                "max": 1,
+                "credits_per_minor": 18,
+                "notes": "Optional. Must be from outside Commerce core. Popular choices: Economics, Psychology, Computer Science."
+            },
+            "typical_combinations": [
+                "Major Concentration only",
+                "Major Concentration + Minor"
+            ]
+        },
+
+        "Faculty of Agricultural and Environmental Sciences": {
+            "degree": "B.Sc.(Ag.Env.Sc.) or B.Sc.(Nutrition) or B.Sc.(Environmental Science)",
+            "total_credits": 120,
+            "structure": "Varies by program. Some programs are structured; others allow elective flexibility.",
+            "majors": {
+                "min": 1,
+                "max": 1,
+                "notes": "Typically one major. Some programs (e.g., Environment options) have a flexible specialization track."
+            },
+            "minors": {
+                "min": 0,
+                "max": 1,
+                "credits_per_minor": 18,
+                "notes": "Optional. Must not overlap with required coursework."
+            },
+            "typical_combinations": [
+                "Major only",
+                "Major + Minor"
+            ]
+        },
+
+        "Faculty of Education": {
+            "degree": "B.Ed.",
+            "total_credits": 120,
+            "structure": "Professional teacher training degree. Fixed curriculum with a teachable subject area.",
+            "majors": {
+                "min": 1,
+                "max": 1,
+                "notes": "One teachable subject (e.g., Physical Education, Education in Global Contexts). Cannot double-major."
+            },
+            "minors": {
+                "min": 0,
+                "max": 1,
+                "notes": "Rare. Most students do not add a formal minor due to the heavy required curriculum."
+            },
+            "typical_combinations": [
+                "Teaching Subject only"
+            ]
+        },
+
+        "Faculty of Law": {
+            "degree": "B.C.L./LL.B.",
+            "total_credits": "N/A (3-year JD-equivalent program)",
+            "structure": "Fixed professional curriculum. No major/minor system.",
+            "majors": { "min": 0, "max": 0 },
+            "minors": { "min": 0, "max": 0 },
+            "notes": "Specialized professional degree. No room for additional majors or minors."
+        },
+
+        "Faculty of Medicine and Health Sciences": {
+            "degree": "M.D. or allied health programs",
+            "total_credits": "N/A",
+            "structure": "Fixed professional/medical curriculum.",
+            "majors": { "min": 0, "max": 0 },
+            "minors": { "min": 0, "max": 0 },
+            "notes": "Students in pre-med or nursing tracks may take minors during their B.Sc. pre-requisite years."
+        },
+
+        "Faculty of Dental Medicine and Oral Health Sciences": {
+            "degree": "D.M.D.",
+            "total_credits": "N/A",
+            "structure": "Fixed professional curriculum.",
+            "majors": { "min": 0, "max": 0 },
+            "minors": { "min": 0, "max": 0 },
+            "notes": "No major/minor system."
+        },
+
+        "Schulich School of Music": {
+            "degree": "B.Mus.",
+            "total_credits": 120,
+            "structure": "Structured music curriculum. Limited room for additional programs.",
+            "majors": {
+                "min": 1,
+                "max": 1,
+                "notes": "One music discipline (e.g., Performance, Music Education, Musicology)."
+            },
+            "minors": {
+                "min": 0,
+                "max": 1,
+                "notes": "Occasionally added, but heavy practice/studio load makes this uncommon."
+            },
+            "typical_combinations": [
+                "Music Major only",
+                "Music Major + Minor (rare)"
+            ]
+        },
+
+        "School of Continuing Studies": {
+            "degree": "Various certificates and diplomas",
+            "structure": "Non-standard. Continuing education certificates and professional development programs.",
+            "majors": { "min": 0, "max": 0 },
+            "minors": { "min": 0, "max": 0 },
+            "notes": "Not applicable to traditional undergraduate major/minor system."
+        },
+
+        "Graduate and Postdoctoral Studies": {
+            "degree": "M.Sc., M.A., Ph.D., etc.",
+            "structure": "Graduate programs. No major/minor system at this level.",
+            "majors": { "min": 0, "max": 0 },
+            "minors": { "min": 0, "max": 0 },
+            "notes": "Out of scope for this application."
+        }
+    },
+
+    "universal_rules": {
+        "no_double_counting": "A single course cannot fulfill the requirements of more than one program or concentration.",
+        "program_declaration": "Students must declare their program(s) through Minerva during designated periods.",
+        "gpa_requirements": {
+            "honours": "Minimum 3.0 CGPA typically required to enter or remain in an Honours program.",
+            "general": "Students below 2.0 CGPA may be placed on probation."
+        },
+        "graduation_requirements": {
+            "minimum_credits": 120,
+            "minimum_mcgill_credits": 60,
+            "minimum_upper_level": "At least 60 credits must be at the 300-level or above."
+        }
+    }
+}

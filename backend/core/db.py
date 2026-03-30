@@ -18,13 +18,20 @@ def get_db():
         print(e)
 
     
-    # Check if we are in testing mode
-    if os.environ.get('FLASK_ENV') == 'testing':
+    # Check if a specific database is defined directly in .env
+    db_name = os.environ.get('MONGO_DB_NAME')
+    if db_name:
+        return client[db_name]
+
+    # Otherwise, fallback based on FLASK_ENV mode
+    flask_env = os.environ.get('FLASK_ENV', 'development')
+    if flask_env == 'testing':
         return client['social_graph_test']
-    elif os.environ.get('FLASK_ENV') == 'development':
-        return client['social_graph_dev']
+    elif flask_env == 'production':
+        return client['social_graph_prod']
     
-    return client['social_graph_prod']
+    # Default to development if not specified
+    return client['social_graph_dev']
 
 def check_connection():
     """

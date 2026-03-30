@@ -273,26 +273,35 @@ def pairwise_similarity_from_mongo_docs(
     u_jobs = _extract_experiences(u.get("jobs", []))
     v_jobs = _extract_experiences(v.get("jobs", []))
 
-    exp_sim = 0.5 * _experience_similarity(
-        u_internships, v_internships,
-        w_company=w_company,
-        w_industry=w_industry,
-        w_duration=w_duration,
-        w_recency=w_recency,
-        w_country=w_country,
-        half_life_months=half_life_months,
-    ) + 0.5 * _experience_similarity(
-        u_jobs, v_jobs,
-        w_company=w_company,
-        w_industry=w_industry,
-        w_duration=w_duration,
-        w_recency=w_recency,
-        w_country=w_country,
-        half_life_months=half_life_months,
-    )
+    # If both users have exactly ZERO professional experience, we drop the weight entirely
+    # rather than penalizing their similarity count with an automatic 0.0 feature match.
+    has_exp_u = bool(u_internships or u_jobs)
+    has_exp_v = bool(v_internships or v_jobs)
 
-    sims.append(exp_sim)
-    ws.append(w_exp_total)
+    if not has_exp_u and not has_exp_v:
+        # Both lack experience. Do not penalize their similarities; grade heavily purely on academics.
+        pass
+    else:
+        exp_sim = 0.5 * _experience_similarity(
+            u_internships, v_internships,
+            w_company=w_company,
+            w_industry=w_industry,
+            w_duration=w_duration,
+            w_recency=w_recency,
+            w_country=w_country,
+            half_life_months=half_life_months,
+        ) + 0.5 * _experience_similarity(
+            u_jobs, v_jobs,
+            w_company=w_company,
+            w_industry=w_industry,
+            w_duration=w_duration,
+            w_recency=w_recency,
+            w_country=w_country,
+            half_life_months=half_life_months,
+        )
+
+        sims.append(exp_sim)
+        ws.append(w_exp_total)
 
     total_weight = sum(ws)
     if total_weight == 0:

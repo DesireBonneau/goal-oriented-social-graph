@@ -1,175 +1,209 @@
-import React, { useRef, useCallback, useEffect, useState } from 'react';
+import React, { useRef, useCallback, useEffect, useState, useMemo } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import ForceGraph3D from 'react-force-graph-3d';
 import * as THREE from 'three';
 import SpriteText from 'three-spritetext';
-import { graphConfig, getNodeColor, shouldShowLabel, shouldShowAura } from '../../config/graphConfig';
+import {
+    graphConfig,
+    getNodeColor,
+    getLinkStyle,
+    shouldShowLabel,
+    shouldShowAura,
+} from '../../config/graphConfig';
 
 /**
  * @param {Object} props
- * @param {import('../../utils/schema').GraphData} props.data
- * @param {(node: import('../../utils/schema').Node) => void} props.onNodeClick
- * @param {import('../../utils/schema').Node | null} props.focusNode
+ * @param {Object} props.data
+ * @param {(node: Object) => void} props.onNodeClick
+ * @param {Object | null} props.focusNode    - Single focus node (zooms camera to it)
+ * @param {Object | null} props.secondNode   - Second node in comparison (camera fits both)
+ * @param {string | null} props.selectedNodeId   - ID of selected node (for colour)
+ * @param {string | null} props.comparisonNodeId - ID of comparison node (for colour)
  * @param {boolean} props.is3D
  */
-export default function GraphViz({ data, onNodeClick, focusNode, is3D = false }) {
+export default function GraphViz({
+    data,
+    onNodeClick,
+    focusNode,
+    secondNode,
+    selectedNodeId,
+    comparisonNodeId,
+    is3D = false,
+}) {
     const fgRef = useRef();
-    const positionsRef = useRef({}); // Store node positions across view switches
+    const positionsRef = useRef({});
     const [isTransitioning, setIsTransitioning] = useState(false);
     const prevIs3D = useRef(is3D);
 
-    // Save positions before view switch and restore after
+    // ── Virtual edge for comparison mode ──────────────────────────────────────
+    const graphDataWithVirtualEdge = useMemo(() => {
+        if (!focusNode || !secondNode) return data;
+
+        const focusId = focusNode.id ?? focusNode;
+        const secondId = secondNode.id ?? secondNode;
+
+        const hasRealEdge = data.links.some(l => {
+            const s = l.source?.id ?? l.source;
+            const t = l.target?.id ?? l.target;
+            return (s === focusId && t === secondId) || (s === secondId && t === focusId);
+        });
+
+        if (hasRealEdge) return data;
+
+        return {
+            ...data,
+            links: [
+                ...data.links,
+                { source: focusId, target: secondId, type: 'virtual', strength: 0, __virtual: true }
+            ]
+        };
+    }, [data, focusNode, secondNode]);
+
+    // ── Node colour helper (uses props, not global singleton) ─────────────────
+    const getNodeColorWithState = useCallback((node) => {
+        const { colors, selfId } = graphConfig;
+        const isInComparisonMode = selectedNodeId !== null || comparisonNodeId !== null;
+
+        if (comparisonNodeId && node.id === comparisonNodeId) return colors.comparison;
+        if (selectedNodeId && node.id === selectedNodeId) return colors.selected;
+        if (selfId && node.id === selfId && isInComparisonMode) return colors.selfHighlighted;
+        return getNodeColor(node);
+    }, [selectedNodeId, comparisonNodeId]);
+
+    // ── View switch: save and restore positions ────────────────────────────────
     useEffect(() => {
         if (prevIs3D.current !== is3D) {
-            // View is switching - positions were already saved (see below)
             setIsTransitioning(true);
-
-            // Apply saved positions to nodes
             if (data.nodes && Object.keys(positionsRef.current).length > 0) {
                 data.nodes.forEach(node => {
                     const saved = positionsRef.current[node.id];
                     if (saved) {
-                        node.x = saved.x;
-                        node.y = saved.y;
-                        node.z = saved.z ?? 0;
-                        // Temporarily fix positions to prevent simulation from scattering
-                        node.fx = saved.x;
-                        node.fy = saved.y;
+                        node.x = saved.x; node.y = saved.y; node.z = saved.z ?? 0;
+                        node.fx = saved.x; node.fy = saved.y;
                         if (is3D) node.fz = saved.z ?? 0;
                     }
                 });
             }
-
-            // Unfix positions after a short delay to allow smooth settling
             const timer = setTimeout(() => {
                 if (data.nodes) {
                     data.nodes.forEach(node => {
-                        node.fx = undefined;
-                        node.fy = undefined;
-                        node.fz = undefined;
+                        node.fx = undefined; node.fy = undefined; node.fz = undefined;
                     });
                 }
                 setIsTransitioning(false);
             }, 500);
-
             prevIs3D.current = is3D;
             return () => clearTimeout(timer);
         }
     }, [is3D, data.nodes]);
 
-    // Save current positions whenever they're updated (on each tick)
-    const handleEngineStop = useCallback(() => {
-        if (data.nodes) {
-            data.nodes.forEach(node => {
-                positionsRef.current[node.id] = {
-                    x: node.x,
-                    y: node.y,
-                    z: node.z ?? 0
-                };
-            });
-        }
+    const savePositions = useCallback(() => {
+        data.nodes?.forEach(node => {
+            positionsRef.current[node.id] = { x: node.x, y: node.y, z: node.z ?? 0 };
+        });
     }, [data.nodes]);
 
-    // Also save on engine tick for more frequent saves
-    const handleEngineTick = useCallback(() => {
-        if (data.nodes) {
-            data.nodes.forEach(node => {
-                positionsRef.current[node.id] = {
-                    x: node.x,
-                    y: node.y,
-                    z: node.z ?? 0
-                };
-            });
-        }
-    }, [data.nodes]);
+    // ── Camera: focus on one or two nodes ─────────────────────────────────────
+    // Only trigger camera movement when the focusNode/secondNode ID changes, not on re-renders
+    const prevFocusId = useRef(null);
+    const prevSecondId = useRef(null);
 
-    // Camera Focus Effect (2D + 3D)
     useEffect(() => {
-        if (focusNode && fgRef.current) {
-            const { focusDistance, focusZoom2D, animationDuration } = graphConfig.camera;
-            if (is3D) {
-                // 3D Camera Logic - just look at the node without rotating the whole view
-                // Calculate a position that looks at the node from a reasonable distance
-                const lookAtPos = { x: focusNode.x, y: focusNode.y, z: focusNode.z };
-                // Move camera to keep same relative viewing angle but closer to node
-                const currentPos = fgRef.current.cameraPosition();
-                const dirX = currentPos.x - focusNode.x;
-                const dirY = currentPos.y - focusNode.y;
-                const dirZ = currentPos.z - focusNode.z;
-                const dist = Math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ);
-                const scale = focusDistance / Math.max(dist, 1);
+        const newFocusId = focusNode?.id ?? null;
+        const newSecondId = secondNode?.id ?? null;
 
+        // Skip if same selection (prevents camera spinning on re-render)
+        if (newFocusId === prevFocusId.current && newSecondId === prevSecondId.current) return;
+        prevFocusId.current = newFocusId;
+        prevSecondId.current = newSecondId;
+
+        if (!fgRef.current || !focusNode) return;
+
+        const { focusDistance, focusZoom2D, animationDuration } = graphConfig.camera;
+        // Use a gentler zoom so other nodes stay visible
+        const safeZoom2D = Math.min(focusZoom2D, 1.8);
+
+        if (focusNode && secondNode) {
+            if (!is3D) {
+                const midX = ((focusNode.x ?? 0) + (secondNode.x ?? 0)) / 2;
+                const midY = ((focusNode.y ?? 0) + (secondNode.y ?? 0)) / 2;
+                fgRef.current.centerAt(midX, midY, animationDuration);
+                fgRef.current.zoom(safeZoom2D * 0.8, animationDuration);
+            } else {
+                const midX = ((focusNode.x ?? 0) + (secondNode.x ?? 0)) / 2;
+                const midY = ((focusNode.y ?? 0) + (secondNode.y ?? 0)) / 2;
+                const midZ = ((focusNode.z ?? 0) + (secondNode.z ?? 0)) / 2;
+                // Only translate, no lookAt rotation
                 fgRef.current.cameraPosition(
-                    {
-                        x: focusNode.x + dirX * scale,
-                        y: focusNode.y + dirY * scale,
-                        z: focusNode.z + dirZ * scale
-                    },
-                    lookAtPos,
-                    animationDuration * 2
+                    { x: midX, y: midY, z: midZ + focusDistance * 1.5 },
+                    undefined,
+                    animationDuration
+                );
+            }
+        } else if (focusNode) {
+            if (is3D) {
+                // Translate camera toward node without rotating (no lookAt arg)
+                const currentPos = fgRef.current.cameraPosition();
+                const dx = (focusNode.x ?? 0) - currentPos.x;
+                const dy = (focusNode.y ?? 0) - currentPos.y;
+                fgRef.current.cameraPosition(
+                    { x: currentPos.x + dx * 0.5, y: currentPos.y + dy * 0.5, z: currentPos.z },
+                    undefined,
+                    animationDuration
                 );
             } else {
-                // 2D Camera Logic
                 fgRef.current.centerAt(focusNode.x, focusNode.y, animationDuration);
-                fgRef.current.zoom(focusZoom2D, animationDuration);
+                fgRef.current.zoom(safeZoom2D, animationDuration);
             }
         }
-    }, [focusNode, is3D]);
+    }, [focusNode?.id, secondNode?.id, is3D]);
 
-    // Configure 3D orbit controls: swap rotate/pan, adjust speeds
+    // ── Configure 3D orbit controls ────────────────────────────────────────────
     useEffect(() => {
         if (is3D && fgRef.current) {
-            // Small delay to ensure the graph is fully initialized
             const timer = setTimeout(() => {
                 const controls = fgRef.current.controls();
                 if (controls) {
-                    // Swap mouse buttons: LEFT=pan (2), RIGHT=rotate (0)
-                    controls.mouseButtons = {
-                        LEFT: 2,   // THREE.MOUSE.PAN
-                        MIDDLE: 1, // THREE.MOUSE.DOLLY  
-                        RIGHT: 0   // THREE.MOUSE.ROTATE
-                    };
-                    // For touch: ONE finger = pan, TWO fingers = rotate
-                    controls.touches = {
-                        ONE: 1,  // THREE.TOUCH.PAN
-                        TWO: 2   // THREE.TOUCH.DOLLY_ROTATE
-                    };
-                    // Adjust speeds
-                    controls.zoomSpeed = 1.5;    // Faster zoom
-                    controls.panSpeed = 0.4;     // Slower pan
-                    controls.rotateSpeed = 0.8;  // Moderate rotation
+                    controls.zoomSpeed = 1.5;
+                    controls.panSpeed = 0.4;
+                    controls.rotateSpeed = 0.8;
                 }
             }, 100);
             return () => clearTimeout(timer);
         }
     }, [is3D]);
 
-    // Set initial zoom level when graph first loads or mode changes
+    // ── Initial zoom ───────────────────────────────────────────────────────────
     useEffect(() => {
-        if (fgRef.current && data.nodes?.length > 0) {
-            // If we have a focusNode, don't reset to 0,0,0. Let the focusNode effect handle it.
-            if (focusNode) return;
-
+        if (fgRef.current && data.nodes?.length > 0 && !focusNode) {
             const timer = setTimeout(() => {
                 const { initialZoom3D, initialZoom2D, animationDuration } = graphConfig.camera;
                 if (is3D) {
-                    fgRef.current.cameraPosition({ x: 0, y: 0, z: initialZoom3D }, { x: 0, y: 0, z: 0 }, animationDuration);
+                    fgRef.current.cameraPosition({ x: 0, y: 0, z: initialZoom3D }, undefined, animationDuration);
                 } else {
                     fgRef.current.zoom(initialZoom2D, animationDuration);
                     fgRef.current.centerAt(0, 0, animationDuration);
                 }
-            }, 300);
+            }, 500);
             return () => clearTimeout(timer);
         }
-    }, [data.nodes?.length, is3D, focusNode]);
+    }, [data.nodes?.length, is3D]);
 
-    // --- 3D Rendering Logic ---
+    // ── 3D Rendering ──────────────────────────────────────────────────────────
+    // Deps include selectedNodeId/comparisonNodeId so THREE objects rebuild on selection change
     const nodeThreeObject = useCallback((node) => {
         const group = new THREE.Group();
-        const color = getNodeColor(node);
+        const color = getNodeColorWithState(node);
         const { sizing, colors } = graphConfig;
+        const radius = Math.sqrt(node.val || 5) * sizing.baseRadius3D;
 
-        const radius = Math.sqrt(node.val) * sizing.baseRadius3D;
+        const isHighlighted = node.id === selectedNodeId || node.id === comparisonNodeId;
+        if (isHighlighted) {
+            const ringGeo = new THREE.TorusGeometry(radius * 1.8, 0.5, 8, 32);
+            const ringMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.7 });
+            group.add(new THREE.Mesh(ringGeo, ringMat));
+        }
+
         const geometry = new THREE.SphereGeometry(radius);
         const material = new THREE.MeshLambertMaterial({ color, transparent: true, opacity: 0.9 });
         group.add(new THREE.Mesh(geometry, material));
@@ -177,17 +211,12 @@ export default function GraphViz({ data, onNodeClick, focusNode, is3D = false })
         if (shouldShowAura(node)) {
             const aura = new THREE.Mesh(
                 new THREE.SphereGeometry(radius * sizing.auraMultiplier),
-                new THREE.MeshBasicMaterial({
-                    color: colors.aura,
-                    transparent: true,
-                    opacity: node.score * 0.15,
-                    depthWrite: false
-                })
+                new THREE.MeshBasicMaterial({ color: colors.aura, transparent: true, opacity: node.score * 0.15, depthWrite: false })
             );
             group.add(aura);
         }
 
-        if (shouldShowLabel(node)) {
+        if (shouldShowLabel(node) || isHighlighted) {
             const sprite = new SpriteText(node.name);
             sprite.color = 'white';
             sprite.textHeight = 3;
@@ -195,50 +224,65 @@ export default function GraphViz({ data, onNodeClick, focusNode, is3D = false })
             group.add(sprite);
         }
         return group;
-    }, []);
+    }, [selectedNodeId, comparisonNodeId, getNodeColorWithState]);
 
-    // --- 2D Rendering Logic ---
+    // ── 2D Rendering ──────────────────────────────────────────────────────────
+    // Deps include selectedNodeId/comparisonNodeId so canvas redraws on selection change
     const nodeCanvasObject = useCallback((node, ctx, globalScale) => {
-        const { sizing, colors } = graphConfig;
-        const radius = Math.sqrt(node.val) * sizing.baseRadius2D;
+        const { sizing } = graphConfig;
+        const radius = Math.sqrt(node.val || 5) * sizing.baseRadius2D;
+        const color = getNodeColorWithState(node);
+        const isHighlighted = node.id === selectedNodeId || node.id === comparisonNodeId;
 
-        // Aura
-        if (shouldShowAura(node)) {
+        if (shouldShowAura(node) && !isHighlighted) {
             const auraRadius = radius * (sizing.auraMultiplier + 1);
             ctx.beginPath();
-            ctx.arc(node.x, node.y, auraRadius, 0, 2 * Math.PI, false);
+            ctx.arc(node.x, node.y, auraRadius, 0, 2 * Math.PI);
             ctx.fillStyle = `rgba(59, 130, 246, ${node.score * 0.3})`;
             ctx.fill();
         }
 
-        // Node
+        if (isHighlighted) {
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, radius * 2.8, 0, 2 * Math.PI);
+            ctx.fillStyle = `${color}30`;
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, radius * 1.7, 0, 2 * Math.PI);
+            ctx.strokeStyle = `${color}CC`;
+            ctx.lineWidth = 1.5 / globalScale;
+            ctx.stroke();
+        }
+
         ctx.beginPath();
-        ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI, false);
-        ctx.fillStyle = getNodeColor(node);
+        ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI);
+        ctx.fillStyle = color;
         ctx.fill();
 
-        // Label
-        if (shouldShowLabel(node, globalScale)) {
-            const fontSize = 12 / globalScale;
-            ctx.font = `${fontSize}px Sans-Serif`;
+        if (shouldShowLabel(node, globalScale) || isHighlighted) {
+            const fontSize = Math.max(12 / globalScale, isHighlighted ? 10 / globalScale : 0);
+            ctx.font = `${isHighlighted ? 'bold ' : ''}${fontSize}px Sans-Serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-            ctx.fillText(node.name, node.x, node.y + radius + fontSize);
+            ctx.fillStyle = isHighlighted ? '#fff' : 'rgba(255,255,255,0.8)';
+            ctx.fillText(node.name, node.x, node.y + radius + fontSize * 1.2);
         }
-    }, []);
+    }, [selectedNodeId, comparisonNodeId, getNodeColorWithState]);
 
-    // Common props for both graph types
+    // ── Common props ──────────────────────────────────────────────────────────
     const commonProps = {
         ref: fgRef,
-        graphData: data,
-        nodeLabel: "name",
-        onNodeClick: onNodeClick,
-        onEngineStop: handleEngineStop,
-        onEngineTick: handleEngineTick,
-        cooldownTicks: isTransitioning ? 0 : undefined, // Prevent simulation from running during transition
+        graphData: graphDataWithVirtualEdge,
+        nodeLabel: 'name',
+        onNodeClick,
+        onEngineStop: savePositions,
+        onEngineTick: savePositions,
+        cooldownTicks: isTransitioning ? 0 : undefined,
         warmupTicks: isTransitioning ? 0 : 100,
-        backgroundColor: "#0f172a"
+        backgroundColor: '#0f172a',
+        d3AlphaDecay: 0.02,
+        d3VelocityDecay: 0.3,
     };
 
     return (
@@ -247,9 +291,13 @@ export default function GraphViz({ data, onNodeClick, focusNode, is3D = false })
                 <ForceGraph3D
                     {...commonProps}
                     nodeThreeObject={nodeThreeObject}
-                    linkColor={() => "rgba(255,255,255,0.2)"}
-                    linkWidth={link => link.strength * 0.5}
-                    linkDirectionalParticles={link => link.strength > 0.8 ? 2 : 0}
+                    nodeThreeObjectExtend={false}
+                    linkColor={link => getLinkStyle(link, link.__virtual).color}
+                    linkWidth={link => getLinkStyle(link, link.__virtual).width}
+                    linkDashLen={link => getLinkStyle(link, link.__virtual).dashed ? 4 : 0}
+                    linkDashGap={link => getLinkStyle(link, link.__virtual).dashed ? 2 : 0}
+                    linkDirectionalParticles={link => link.__virtual ? 3 : (link.strength > 0.8 ? 2 : 0)}
+                    linkDirectionalParticleColor={link => getLinkStyle(link, link.__virtual).color}
                     linkDirectionalParticleSpeed={0.005}
                     showNavInfo={false}
                     controlType="orbit"
@@ -258,9 +306,10 @@ export default function GraphViz({ data, onNodeClick, focusNode, is3D = false })
                 <ForceGraph2D
                     {...commonProps}
                     nodeCanvasObject={nodeCanvasObject}
-                    nodeCanvasObjectMode={() => "replace"}
-                    linkColor={() => "rgba(255,255,255,0.2)"}
-                    linkLineDash={link => link.type === 'fuzzy' ? [5, 5] : null}
+                    nodeCanvasObjectMode={() => 'replace'}
+                    linkColor={link => getLinkStyle(link, link.__virtual).color}
+                    linkWidth={link => getLinkStyle(link, link.__virtual).width}
+                    linkLineDash={link => getLinkStyle(link, link.__virtual).dashed ? [4, 2] : null}
                     minZoom={graphConfig.camera.minZoom2D}
                     maxZoom={graphConfig.camera.maxZoom2D}
                 />
