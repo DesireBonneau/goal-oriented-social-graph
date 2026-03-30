@@ -104,23 +104,13 @@ export default function GraphViz({
     }, [data.nodes]);
 
     // ── Camera: focus on one or two nodes ─────────────────────────────────────
-    // Only trigger camera movement when the focusNode/secondNode ID changes, not on re-renders
-    const prevFocusId = useRef(null);
-    const prevSecondId = useRef(null);
-
+    // ── Camera: focus on one or two nodes (triggered externally via props) ─────
     useEffect(() => {
-        const newFocusId = focusNode?.id ?? null;
-        const newSecondId = secondNode?.id ?? null;
-
-        // Skip if same selection (prevents camera spinning on re-render)
-        if (newFocusId === prevFocusId.current && newSecondId === prevSecondId.current) return;
-        prevFocusId.current = newFocusId;
-        prevSecondId.current = newSecondId;
-
         if (!fgRef.current || !focusNode) return;
 
+        // Skip if this effect was already run for this exact pair of nodes recently
+        // to avoid fighting with manual user clicks
         const { focusDistance, focusZoom2D, animationDuration } = graphConfig.camera;
-        // Use a gentler zoom so other nodes stay visible
         const safeZoom2D = Math.min(focusZoom2D, 1.8);
 
         if (focusNode && secondNode) {
@@ -133,7 +123,6 @@ export default function GraphViz({
                 const midX = ((focusNode.x ?? 0) + (secondNode.x ?? 0)) / 2;
                 const midY = ((focusNode.y ?? 0) + (secondNode.y ?? 0)) / 2;
                 const midZ = ((focusNode.z ?? 0) + (secondNode.z ?? 0)) / 2;
-                // Only translate, no lookAt rotation
                 fgRef.current.cameraPosition(
                     { x: midX, y: midY, z: midZ + focusDistance * 1.5 },
                     undefined,
@@ -142,13 +131,19 @@ export default function GraphViz({
             }
         } else if (focusNode) {
             if (is3D) {
-                // Translate camera toward node without rotating (no lookAt arg)
-                const currentPos = fgRef.current.cameraPosition();
-                const dx = (focusNode.x ?? 0) - currentPos.x;
-                const dy = (focusNode.y ?? 0) - currentPos.y;
+                const distance = focusDistance;
+                const nodeX = focusNode.x ?? 0;
+                const nodeY = focusNode.y ?? 0;
+                const nodeZ = focusNode.z ?? 0;
+                const distRatio = 1 + distance / Math.max(Math.hypot(nodeX, nodeY, nodeZ), 1);
+
+                const newPos = (nodeX || nodeY || nodeZ)
+                    ? { x: nodeX * distRatio, y: nodeY * distRatio, z: nodeZ * distRatio }
+                    : { x: 0, y: 0, z: distance };
+
                 fgRef.current.cameraPosition(
-                    { x: currentPos.x + dx * 0.5, y: currentPos.y + dy * 0.5, z: currentPos.z },
-                    undefined,
+                    newPos,
+                    { x: nodeX, y: nodeY, z: nodeZ },
                     animationDuration
                 );
             } else {
@@ -158,20 +153,68 @@ export default function GraphViz({
         }
     }, [focusNode?.id, secondNode?.id, is3D]);
 
+    // ── Handle Manual Node Clicks ──────────────────────────────────────────────
+    const handleNodeClickInternal = useCallback((node) => {
+        if (fgRef.current && !secondNode) {
+            const { focusDistance, focusZoom2D, animationDuration } = graphConfig.camera;
+            if (is3D) {
+                const distance = focusDistance;
+                const nodeX = node.x ?? 0;
+                const nodeY = node.y ?? 0;
+                const nodeZ = node.z ?? 0;
+                const distRatio = 1 + distance / Math.max(Math.hypot(nodeX, nodeY, nodeZ), 1);
+
+                const newPos = (nodeX || nodeY || nodeZ)
+                    ? { x: nodeX * distRatio, y: nodeY * distRatio, z: nodeZ * distRatio }
+                    : { x: 0, y: 0, z: distance };
+
+                fgRef.current.cameraPosition(
+                    newPos,
+                    { x: nodeX, y: nodeY, z: nodeZ },
+                    animationDuration
+                );
+            } else {
+                fgRef.current.centerAt(node.x, node.y, animationDuration);
+                fgRef.current.zoom(Math.min(focusZoom2D, 1.8), animationDuration);
+            }
+        }
+        if (onNodeClick) onNodeClick(node);
+    }, [is3D, secondNode, onNodeClick]);
+
     // ── Configure 3D orbit controls ────────────────────────────────────────────
     useEffect(() => {
         if (is3D && fgRef.current) {
             const timer = setTimeout(() => {
                 const controls = fgRef.current.controls();
                 if (controls) {
-                    controls.zoomSpeed = 1.5;
-                    controls.panSpeed = 0.4;
-                    controls.rotateSpeed = 0.8;
+                    controls.rotateSpeed = 0.5;
+                    controls.panSpeed = 0.8;
+                    controls.zoomSpeed = 1.2;
+                    controls.enableDamping = true;
+                    controls.dampingFactor = 0.1;
+                    controls.maxDistance = 4000;
+                    controls.minDistance = 10;
                 }
             }, 100);
             return () => clearTimeout(timer);
         }
     }, [is3D]);
+
+    // ── Configure D3 Forces (spread nodes) ─────────────────────────────────────
+    useEffect(() => {
+        if (fgRef.current && data.nodes?.length > 0) {
+            // Push nodes apart so it's not a clustered blob
+            fgRef.current.d3Force('charge').strength(-300);
+            
+            // Weak connections settle further apart than strong ones
+            fgRef.current.d3Force('link').distance(link => {
+                const strength = link.strength || 0.1;
+                return 200 - (strength * 150); // range roughly ~200 down to 50
+            });
+            
+            fgRef.current.d3ReheatSimulation();
+        }
+    }, [data.nodes, is3D]);
 
     // ── Initial zoom ───────────────────────────────────────────────────────────
     useEffect(() => {
@@ -275,7 +318,7 @@ export default function GraphViz({
         ref: fgRef,
         graphData: graphDataWithVirtualEdge,
         nodeLabel: 'name',
-        onNodeClick,
+        onNodeClick: handleNodeClickInternal,
         onEngineStop: savePositions,
         onEngineTick: savePositions,
         cooldownTicks: isTransitioning ? 0 : undefined,

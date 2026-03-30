@@ -369,11 +369,28 @@ def _pick_majors(faculty: str) -> list[str]:
     count = min(count, len(available))
     return random.sample(available, count)
 
+# Faculty → industries mapping for similarity matching
+FACULTY_INDUSTRIES = {
+    "Faculty of Engineering": ["Technology", "Software", "Engineering", "Hardware"],
+    "Faculty of Science": ["Research", "Healthcare", "Biotech", "Data Science"],
+    "Desautels Faculty of Management": ["Finance", "Consulting", "Banking", "Marketing"],
+    "Faculty of Arts": ["Media", "Government", "Education", "Communications"],
+    "Faculty of Agricultural and Environmental Sciences": ["Environment", "Agriculture", "Energy", "Sustainability"],
+    "Faculty of Education": ["Education", "Youth Services", "Nonprofit"],
+    "Schulich School of Music": ["Entertainment", "Arts", "Media", "Music"],
+    "Faculty of Law": ["Legal", "Government", "Policy"],
+    "Faculty of Medicine and Health Sciences": ["Healthcare", "Pharma", "Research", "Biotech"],
+    "Faculty of Dental Medicine and Oral Health Sciences": ["Healthcare", "Dental", "Research"],
+}
+
+FALLBACK_INDUSTRIES = ["Technology", "Consulting", "Retail", "Communications", "Operations"]
+
 # ── Experience generation ─────────────────────────────────────────────────────
 def _generate_experience(count: int, faculty: str = "") -> list[dict]:
     faculty_pool = FACULTY_EXPERIENCE.get(faculty, {})
     relevant_positions = faculty_pool.get("positions", FALLBACK_POSITIONS)
     relevant_companies = faculty_pool.get("companies", FALLBACK_COMPANIES)
+    faculty_industries = FACULTY_INDUSTRIES.get(faculty, FALLBACK_INDUSTRIES)
 
     experiences = []
     for _ in range(count):
@@ -388,13 +405,20 @@ def _generate_experience(count: int, faculty: str = "") -> list[dict]:
         position = random.choice(relevant_positions if use_relevant else FALLBACK_POSITIONS)
         company  = random.choice(relevant_companies if use_relevant else FALLBACK_COMPANIES)
 
+        # Pick 1-2 industries from the faculty's pool
+        num_industries = random.randint(1, min(2, len(faculty_industries)))
+        selected_industries = random.sample(
+            faculty_industries if use_relevant else FALLBACK_INDUSTRIES,
+            num_industries
+        )
+
         experiences.append({
             "position": position,
             "company": company,
             "start_date": f"{start_year}-{start_month:02d}",
             "end_date":   f"{end_year}-{end_month:02d}",
             "location":   random.choice(LOCATIONS),
-            "industries": [],
+            "industry": selected_industries,
         })
     return experiences
 

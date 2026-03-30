@@ -4,7 +4,7 @@ import Sidebar from './components/Layout/Sidebar';
 import SearchBar from './components/UI/SearchBar';
 import RegistrationFlow from './components/Onboarding/RegistrationFlow';
 import { api } from './services/api';
-import { setCurrentUserId } from './config/graphConfig';
+import { setCurrentUserId, setSelectionState } from './config/graphConfig';
 
 function App() {
   // ── Auth & graph state ─────────────────────────────────────────────────────
@@ -18,10 +18,14 @@ function App() {
   const [searchContext, setSearchContext] = useState(null);
 
   // ── Keep graphConfig in sync with selection state ──────────────────────────
-  // (still needed for getLinkStyle which reads the singleton)
+  // setCurrentUserId drives self-node colour; setSelectionState drives link highlighting
   useEffect(() => {
     setCurrentUserId(user?.isGuest ? null : user?.id ?? null);
   }, [user]);
+
+  useEffect(() => {
+    setSelectionState(selectedNode?.id ?? null, comparisonNode?.id ?? null);
+  }, [selectedNode?.id, comparisonNode?.id]);
 
   // ── Registration handler ───────────────────────────────────────────────────
   const handleRegistrationComplete = async (userData) => {

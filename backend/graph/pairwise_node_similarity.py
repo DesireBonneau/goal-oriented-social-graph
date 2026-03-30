@@ -66,6 +66,27 @@ def _exact_match(a: Optional[str], b: Optional[str]) -> float:
     return 1.0 if a_norm == b_norm else 0.0
 
 
+def _text_overlap(a: Optional[str], b: Optional[str]) -> float:
+    a_norm = _normalize_str(a)
+    b_norm = _normalize_str(b)
+    if not a_norm or not b_norm:
+        return 0.0
+    
+    a_tokens = set(a_norm.replace("/", " ").replace("-", " ").replace("&", " ").split())
+    b_tokens = set(b_norm.replace("/", " ").replace("-", " ").replace("&", " ").split())
+    
+    stop_words = {"and", "in", "of", "with", "the"}
+    a_tokens -= stop_words
+    b_tokens -= stop_words
+    
+    if not a_tokens or not b_tokens:
+        return 0.0
+    
+    inter = a_tokens.intersection(b_tokens)
+    union = a_tokens.union(b_tokens)
+    return len(inter) / len(union) if union else 0.0
+
+
 def _as_set(value: Any) -> Optional[set]:
     if value is None:
         return None
@@ -241,12 +262,14 @@ def pairwise_similarity_from_mongo_docs(
     weights = weights or {}
 
     w_faculty = weights.get("faculty", 0.10)
-    w_major = weights.get("major", 0.25)
-    w_minor = weights.get("minor", 0.12)
-    w_preferred_work_country = weights.get("preferred_work_country", 0.08)
+    w_major = weights.get("major", 0.20)
+    w_minor = weights.get("minor", 0.10)
+    w_preferred_work_country = weights.get("preferred_work_country", 0.05)
+    w_clubs = weights.get("clubs", 0.10)
+    w_grad_year = weights.get("grad_year", 0.05)
 
     exp_weights = weights.get("professional_experience", {})
-    w_exp_total = exp_weights.get("total", 0.45)
+    w_exp_total = exp_weights.get("total", 0.40)
     w_company = exp_weights.get("company", 0.37)
     w_industry = exp_weights.get("industry", 0.28)
     w_duration = exp_weights.get("duration", 0.15)
@@ -259,14 +282,34 @@ def pairwise_similarity_from_mongo_docs(
     sims.append(_exact_match(u.get("faculty"), v.get("faculty")))
     ws.append(w_faculty)
 
-    sims.append(_exact_match(_normalize_major_minor(u.get("major")), _normalize_major_minor(v.get("major"))))
+    sims.append(_text_overlap(_normalize_major_minor(u.get("major")), _normalize_major_minor(v.get("major"))))
     ws.append(w_major)
 
-    sims.append(_exact_match(_normalize_major_minor(u.get("minor")), _normalize_major_minor(v.get("minor"))))
+    sims.append(_text_overlap(_normalize_major_minor(u.get("minor")), _normalize_major_minor(v.get("minor"))))
     ws.append(w_minor)
 
     sims.append(_exact_match(u.get("preferred_work_country"), v.get("preferred_work_country")))
     ws.append(w_preferred_work_country)
+    
+    # Clubs (Jaccard similarity)
+    u_clubs = _as_set(u.get("clubs", []))
+    v_clubs = _as_set(v.get("clubs", []))
+    if u_clubs or v_clubs:  # Only count if at least one has clubs
+        sims.append(_jaccard(u_clubs, v_clubs))
+        ws.append(w_clubs)
+        
+    # Graduation year (Proximity)
+    u_year = u.get("graduation_year")
+    v_year = v.get("graduation_year")
+    if u_year is not None and v_year is not None:
+        try:
+            diff = abs(int(u_year) - int(v_year))
+            # 0 diff = 1.0, 1 diff = 0.8, 2 diff = 0.5, 3 diff = 0.2, 4+ = 0.0
+            year_sim = max(0.0, 1.0 - (diff * 0.25))
+            sims.append(year_sim)
+            ws.append(w_grad_year)
+        except (ValueError, TypeError):
+            pass
 
     u_internships = _extract_experiences(u.get("internships", []))
     v_internships = _extract_experiences(v.get("internships", []))

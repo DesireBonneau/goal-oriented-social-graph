@@ -42,14 +42,14 @@ export const graphConfig = {
 
     // Camera/zoom settings
     camera: {
-        initialZoom3D: 150,     // Initial camera z position in 3D
-        initialZoom2D: 3.5,     // Initial zoom level in 2D
-        focusDistance: 200,     // Distance when focusing on a node (higher = less zoom)
+        initialZoom3D: 600,     // Start far out so full graph is visible
+        initialZoom2D: 2.5,     // Initial zoom level in 2D
+        focusDistance: 400,     // Gentle zoom when clicking a node in 3D
         focusZoom2D: 2.5,       // Zoom level when focusing on a node in 2D
-        animationDuration: 500, // ms for zoom animations
-        minZoom3D: 80,          // Closest zoom in 3D (lower z = closer)
-        maxZoom3D: 500,         // Farthest zoom in 3D (higher z = farther)
-        minZoom2D: 0.5,         // Minimum zoom level in 2D
+        animationDuration: 1000, // ms for zoom animations (smooth transition)
+        minZoom3D: 30,          // Closest zoom in 3D
+        maxZoom3D: 4000,        // Very far unzoom in 3D
+        minZoom2D: 0.15,        // Minimum zoom level in 2D (very far out)
         maxZoom2D: 8,           // Maximum zoom level in 2D
     },
 
@@ -160,10 +160,18 @@ export function getLinkStyle(link, isVirtual = false) {
         )
     );
 
+    const strength = link.strength || 0.1;
+    // Scale width: weak links are thin, strong links are thicker
+    const baseWidth = Math.max(0.2, (strength * 2.5));
+    // Scale opacity: weak links are faded out slightly
+    const opacity = Math.max(0.15, strength * 0.8);
+    // rgba version of slate-500 (#64748b)
+    const baseColor = `rgba(100, 116, 139, ${opacity.toFixed(2)})`;
+
     if (isHighlighted) {
-        return { color: colors.highlightedEdge, width: 3, dashed: false };
+        return { color: colors.highlightedEdge, width: Math.max(2, baseWidth * 1.5), dashed: false };
     }
-    return { color: 'rgba(255,255,255,0.2)', width: 0.5, dashed: link.type === 'fuzzy' };
+    return { color: baseColor, width: baseWidth, dashed: link.type === 'fuzzy' };
 }
 
 /**

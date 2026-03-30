@@ -25,6 +25,8 @@ def normalize_user_for_similarity(user_doc: Dict[str, Any]) -> Dict[str, Any]:
         "preferred_work_country": user_doc.get("preferred_work_country"),
         "internships": [],
         "jobs": [],
+        "clubs": user_doc.get("clubs", []),
+        "graduation_year": user_doc.get("graduationYear", None),
     }
     
     experience = user_doc.get("experience", [])
@@ -113,7 +115,7 @@ def _parse_dates_string(dates_str: str, which: str) -> Optional[str]:
 def compute_user_connections(
     db,
     user_id: str,
-    threshold: float = 0.15,
+    threshold: float = 0.10,
     high_similarity_threshold: float = 0.6,
 ) -> List[Dict[str, Any]]:
     """
@@ -173,7 +175,7 @@ def compute_user_connections(
 
 def rebuild_all_connections(
     db,
-    threshold: float = 0.15,
+    threshold: float = 0.10,
     high_similarity_threshold: float = 0.6,
 ) -> Dict[str, Any]:
     """
